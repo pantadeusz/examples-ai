@@ -9,6 +9,9 @@
 #include <functional>
 #include <vector>
 
+#include <random>
+#include <chrono>
+
 
 using namespace std;
 
@@ -17,11 +20,6 @@ double ackley(const vector<double > &solution);
 /* Simple test functio */
 double parabola(const vector<double> &solution);
 
-
-
-/* random number generator in range (a,b) */
-double r(double a, double b);
-
 /* check if vector v is within range [minV, maxV] */
 bool inRange(const vector < double > &v, const vector < double > &minV, const vector < double > &maxV);
 
@@ -29,26 +27,27 @@ bool inRange(const vector < double > &v, const vector < double > &minV, const ve
 vector < double > hillClimbing(const vector< double > solution0, 
 							const vector < double > &minV, 
 							const vector < double > & maxV, 
-							function < double (const vector<double>&) > goalF );
+							function < double (const vector<double>&) > goalF,
+							unsigned generatorSeed = std::chrono::high_resolution_clock::now().time_since_epoch().count());
 
-int main ()  {
+
+/**********************************************************************/
+
+
+int main (int argc, char **argv)  {
     srand(time(NULL));
     vector< double > minV = {-5,-5}, maxV = {5,5}; // dziedzina funkcji
     vector< double > solution = {r(-5, 5), r(-5, 5)}; // punkt startu
-    int TTL = 20; // liczba iteracji bez poprawy po ktorej algorytm konczy
   
-	solution = hillClimbing(solution, minV, maxV, ackley);
+	//solution = hillClimbing(solution, minV, maxV, ackley);
+    solution = hillClimbing(solution, minV, maxV, parabola);
   
-    cout << "Rozwiązanie: " << solution[1] << " , " << solution[1] << endl;
+    cout << "And the solution is: " << solution[1] << " , " << solution[1] << endl;
 
     return 0;
 }
 
-
-
-
-
-
+/**********************************************************************/
 
 /* Ackley test function for optimization */
 double ackley(const vector<double > &solution) {
@@ -58,15 +57,9 @@ double ackley(const vector<double > &solution) {
         exp(0.5*(cos(2.0*M_PI*x)+cos(2*M_PI*y)))
          + M_E + 20);
 }
-/* Simple test functio */
+/* Simple test function */
 double parabola(const vector<double> &solution) {
     return -(solution[0]*solution[0]+solution[1]*solution[1]);
-}
-
-
-/* random number generator in range (a,b) */
-double r(double a, double b) {
-    return ((rand()%100000)/100000.0)*(b-a)+a;
 }
 
 /* check if vector v is within range [minV, maxV] */
@@ -80,13 +73,17 @@ bool inRange(const vector < double > &v, const vector < double > &minV, const ve
 }
 
 /* The randomized hill climbing algorithm */
-vector < double > hillClimbing(const vector< double > solution0, const vector < double > &minV, const vector < double > & maxV, function < double (const vector<double>&) > goalF ) {
+vector < double > hillClimbing(const vector< double > solution0, const vector < double > &minV, const vector < double > & maxV, function < double (const vector<double>&) > goalF, unsigned generatorSeed ) {
+	std::default_random_engine generator(generatorSeed);
+	//std::normal_distribution<double> distribution(5.0,2.0);
+	std::uniform_real_distribution<double> rdist(-0.01, 0.01);
+
     vector< double > solution = solution0;    
     int TTL = 20; // no solution improvement after 20 iterations results in algorithm stop
     while (TTL) {
         auto solutionCandidate = solution;
         for (auto &e: solutionCandidate) {
-			e = e+r(-0.01, 0.01);  // new solution based on the previous solution
+			e = e+rdist(generator);  // new solution based on the previous solution
 		}
         if(!inRange(solutionCandidate, minV, maxV)) {
             cout << "out of range: " << solution[0] << " , " << solution[1] << endl;
