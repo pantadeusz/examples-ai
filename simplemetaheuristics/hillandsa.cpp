@@ -23,7 +23,9 @@
  * 
  * */
 
-// g++ -std=c++11 hillclimb.cpp -o hillclimb
+// g++ -std=c++11 hillandsa.cpp -o hillclimb
+
+// code created while lecture on SA and HC
 
 #include <tuple>
 #include <iostream>
