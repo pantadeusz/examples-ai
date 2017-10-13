@@ -7,7 +7,7 @@
  */
 // kod zmodyfikowany na potrzeby zajęć z NAI na PJATK Gdańsk
 
-// g++ -fopenmp `pkg-config --cflags opencv` facesFull.cpp -o facesFull `pkg-config --libs opencv`
+// g++ -fopenmp `pkg-config --cflags opencv` glasses.cpp -o glasses `pkg-config --libs opencv`
 // okulary pobrane z http://memesvault.com/wp-content/uploads/Deal-With-It-Sunglasses-07.png
 // elementy związane z przekształceniem geometrycznym http://dsynflo.blogspot.in/2014/08/simplar-2-99-lines-of-code-for.html
 
