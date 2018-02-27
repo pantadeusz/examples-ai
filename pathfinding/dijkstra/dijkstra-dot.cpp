@@ -4,7 +4,7 @@
  *        Tadeusz Puźniakowski
  * 
  * Compilation
- *  g++ -std=c++0x dijkstra.cpp -o dijkstra
+ *  g++ -std=c++0x dijkstra-dot.cpp -o dijkstra
  * 
  * This program uses graphviz for graph generation
  *  sudo apt install graphviz
