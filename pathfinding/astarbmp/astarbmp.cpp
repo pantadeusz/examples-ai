@@ -62,6 +62,7 @@ public:
 path_t searchPath (
 	const point_t &start, ///< start point
 	const point_t &goal, ///< goal point
+	const std::function < float ( const point_t &, const point_t & )> dist, ///< heuristic function
 	const std::function < float ( const point_t &, const point_t & )> h, ///< heuristic function
 	const std::function < std::list < point_t > ( const point_t & )> accessible_verts ///< returns accessible vertices
 ) {
@@ -107,19 +108,19 @@ path_t searchPath (
 		if ( best == goal ) return reconstructPath( best );
 		closedSet.insert( best );
 		/// check every possible direction
-		for ( const point_t & toCheck : accessible_verts( best ) ) {
+		for ( const point_t & neighbor : accessible_verts( best ) ) {
 			/// not in closed set?
-			if (  closedSet.count( toCheck ) == 0 )  {
-				/// calculate temporary t_g_score that is the sum of g_score of current node (best) and actual distance between (best-toCheck)
-				float t_g_score = g_score[best] + h( toCheck, best );
-				/// we should put toCheck to current openSet - it can be evaluated later
-				openSet.insert( toCheck );
-				/// if the toCheck is newly added, then set verry high score to it
-				if ( g_score.count( toCheck ) == 0 ) g_score[toCheck] = 9999999;
-				if ( t_g_score < g_score[toCheck] ) {
-					came_from[toCheck] = best;
-					g_score[toCheck] = t_g_score;
-					f_score[toCheck] = g_score[toCheck] + h( toCheck, goal );
+			if (  closedSet.count( neighbor ) == 0 )  {
+				/// calculate temporary t_g_score that is the sum of g_score of current node (best) 
+				// and actual distance between (best-toCheck)
+				float t_g_score = g_score[best] + dist( neighbor, best );
+				/// we should put neighbor to current openSet - it can be evaluated later
+				openSet.insert( neighbor );
+				/// if the neighbor does not exist, we assume that it is with inf value
+				if ( (g_score.count( neighbor ) == 0) || (t_g_score < g_score[neighbor]) ) {
+					came_from[neighbor] = best;
+					g_score[neighbor] = t_g_score;
+					f_score[neighbor] = g_score[neighbor] + h( neighbor, goal );
 				}
 			}
 		}
@@ -175,7 +176,10 @@ int main ( int argc, char **argv ) {
 	auto heuristic_f = [&]( const point_t &a, const point_t &b )->float {
 		return ::sqrt( ( a[0] - b[0] ) * ( a[0] - b[0] ) + ( a[1] - b[1] ) * ( a[1] - b[1] ) );
 	};
-	path_t foundPath = searchPath ( start, goal, heuristic_f, accessible_verts );
+	auto dist_f = [&]( const point_t &a, const point_t &b )->float {
+		return ::sqrt( ( a[0] - b[0] ) * ( a[0] - b[0] ) + ( a[1] - b[1] ) * ( a[1] - b[1] ) );
+	};
+	path_t foundPath = searchPath ( start, goal, dist_f, heuristic_f, accessible_verts );
 	for ( auto &p : foundPath ) {
 		img( p ) = 128; ///< draw path
 	}
