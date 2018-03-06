@@ -62,25 +62,15 @@ public:
 path_t searchPath (
 	const point_t &start, ///< start point
 	const point_t &goal, ///< goal point
-	const image_t &world,  ///< the map (actually it is a bitmap)
-	const std::function < bool ( const tile_t & ) > accessible, ///< function determining if the point is "walkable"
-	const std::function < float ( const point_t &, const point_t & )> h ///< heuristic function
+	const std::function < float ( const point_t &, const point_t & )> h, ///< heuristic function
+	const std::function < std::list < point_t > ( const point_t & )> accessible_verts ///< returns accessible vertices
 ) {
 	set<point_t > closedSet;
 	set<point_t > openSet;
 	map<point_t, point_t > came_from;
 	map<point_t, float > g_score;
 	map<point_t, float > f_score;
-	int pnext [][3] = {
-		{+0, -1, 0},
-		{-1, -1, 0},
-		{-1, +0, 0},
-		{-1, +1, 0},
-		{+0, +1, 0},
-		{+1, +1, 0},
-		{+1, +0, 0},
-		{+1, -1, 0}
-	};
+
 
 	openSet.insert( start );
 	g_score[start] = 0;
@@ -114,44 +104,37 @@ path_t searchPath (
 	while ( openSet.size() > 0 ) {
 		/// searching openSet element with lowest f_score and saving it to "best"
 		point_t best = popBestFromOpenSet();
-
 		if ( best == goal ) return reconstructPath( best );
-
 		closedSet.insert( best );
-
 		/// check every possible direction
-		for ( int i = 0; i < 8; i++ ) {
-			/// next direction to verify
-			point_t toCheck( best[0] + pnext[i][0], best[1] + pnext[i][1] );
-			/// can we go there?
-			if ( ( toCheck[0] >= 0 ) && ( toCheck[1] >= 0 ) && ( toCheck[0] < world.width ) && ( toCheck[1] < world.height ) ) {
-				/// is it ok to walk on it, and it is not in closedSet?
-				if ( accessible( world( toCheck ) ) && ( closedSet.count( toCheck ) == 0 ) ) {
-					/// calculate temporary t_g_score that is the sum of g_score of current node (best) and actual distance between (best-toCheck)
-					float t_g_score = g_score[best] + h( toCheck, best );
-					/// we should put toCheck to current openSet - it can be evaluated later
-					openSet.insert( toCheck );
-					/// if the toCheck is newly added, then set verry high score to it
-					if ( g_score.count( toCheck ) == 0 ) g_score[toCheck] = 9999999;
-					if ( t_g_score < g_score[toCheck] ) {
-						came_from[toCheck] = best;
-						g_score[toCheck] = t_g_score;
-						f_score[toCheck] = g_score[toCheck] + h( toCheck, goal );
-					}
+		for ( const point_t & toCheck : accessible_verts( best ) ) {
+			/// not in closed set?
+			if (  closedSet.count( toCheck ) == 0 )  {
+				/// calculate temporary t_g_score that is the sum of g_score of current node (best) and actual distance between (best-toCheck)
+				float t_g_score = g_score[best] + h( toCheck, best );
+				/// we should put toCheck to current openSet - it can be evaluated later
+				openSet.insert( toCheck );
+				/// if the toCheck is newly added, then set verry high score to it
+				if ( g_score.count( toCheck ) == 0 ) g_score[toCheck] = 9999999;
+				if ( t_g_score < g_score[toCheck] ) {
+					came_from[toCheck] = best;
+					g_score[toCheck] = t_g_score;
+					f_score[toCheck] = g_score[toCheck] + h( toCheck, goal );
 				}
 			}
 		}
 	}
-
 	return {}; /// no path found
 }
 
-void savePng( const std::string &fname, image_t image ) {
+
+
+void savePng( const std::string & fname, image_t image ) {
 	unsigned error = lodepng::encode( fname, ( unsigned char * )image.data(), image.width, image.height, LodePNGColorType::LCT_GREY, 8 );
 	if( error ) throw std::runtime_error( lodepng_error_text( error ) );
 }
 
-image_t loadPng( const std::string &fname ) {
+image_t loadPng( const std::string & fname ) {
 	image_t image;
 	unsigned error = lodepng::decode( image, image.width, image.height, fname, LodePNGColorType::LCT_GREY, 8 );
 	if( error ) throw std::runtime_error( lodepng_error_text( error ) );
@@ -164,15 +147,35 @@ int main ( int argc, char **argv ) {
 	point_t start( 21, 17 );
 	point_t goal( 211, 132 );
 
-	path_t foundPath = searchPath (
-			start,
-			goal,
-			img,
-			[&]( const tile_t &p )->bool { return ( p < 128 ); },
-			[&]( const point_t &a, const point_t &b )->float {
-				return ::sqrt( ( a[0] - b[0] ) * ( a[0] - b[0] ) + ( a[1] - b[1] ) * ( a[1] - b[1] ) );
+	int pnext [][3] = {
+		{+0, -1, 0},
+		{-1, -1, 0},
+		{-1, +0, 0},
+		{-1, +1, 0},
+		{+0, +1, 0},
+		{+1, +1, 0},
+		{+1, +0, 0},
+		{+1, -1, 0}
+	};
+	const std::function < std::list < point_t > ( const point_t & )> accessible_verts  = [&]( const point_t & best ) -> std::list < point_t > {
+		std::list < point_t > ret;
+		for ( int i = 0; i < 8; i++ ) {
+			point_t toCheck( best[0] + pnext[i][0], best[1] + pnext[i][1] );
+			/// can we go there?
+			if ( ( toCheck[0] >= 0 ) && ( toCheck[1] >= 0 ) && ( toCheck[0] < img.width ) && ( toCheck[1] < img.height ) ) {
+				/// is it ok to walk on it, and it is not in closedSet?
+				if ( img( toCheck ) < 128 ) {
+					ret.push_back( toCheck );
+				}
 			}
-	);
+		}
+		return ret;
+
+	};
+	auto heuristic_f = [&]( const point_t &a, const point_t &b )->float {
+		return ::sqrt( ( a[0] - b[0] ) * ( a[0] - b[0] ) + ( a[1] - b[1] ) * ( a[1] - b[1] ) );
+	};
+	path_t foundPath = searchPath ( start, goal, heuristic_f, accessible_verts );
 	for ( auto &p : foundPath ) {
 		img( p ) = 128; ///< draw path
 	}
