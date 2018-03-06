@@ -165,16 +165,16 @@ int main ( int argc, char **argv ) {
 	point_t goal( 211, 132 );
 
 	path_t foundPath = searchPath (
-						   start,
-						   goal,
-						   img,
-						   [&]( const tile_t &p )->bool { return ( p < 128 ); },
-	[&]( const point_t &a, const point_t &b )->float {
-		return ::sqrt( ( a[0] - b[0] ) * ( a[0] - b[0] ) + ( a[1] - b[1] ) * ( a[1] - b[1] ) );
-	}
-					   );
+			start,
+			goal,
+			img,
+			[&]( const tile_t &p )->bool { return ( p < 128 ); },
+			[&]( const point_t &a, const point_t &b )->float {
+				return ::sqrt( ( a[0] - b[0] ) * ( a[0] - b[0] ) + ( a[1] - b[1] ) * ( a[1] - b[1] ) );
+			}
+	);
 	for ( auto &p : foundPath ) {
-		img( p ) = 128;
+		img( p ) = 128; ///< draw path
 	}
 	savePng( "result.png", img );
 	return 0;
