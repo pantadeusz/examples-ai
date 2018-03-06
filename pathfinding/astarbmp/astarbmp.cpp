@@ -164,7 +164,7 @@ int main ( int argc, char **argv ) {
 			point_t toCheck( best[0] + pnext[i][0], best[1] + pnext[i][1] );
 			/// can we go there?
 			if ( ( toCheck[0] >= 0 ) && ( toCheck[1] >= 0 ) && ( toCheck[0] < img.width ) && ( toCheck[1] < img.height ) ) {
-				/// is it ok to walk on it, and it is not in closedSet?
+				/// is it ok to walk on it
 				if ( img( toCheck ) < 128 ) {
 					ret.push_back( toCheck );
 				}
