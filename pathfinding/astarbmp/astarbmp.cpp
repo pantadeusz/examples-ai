@@ -74,8 +74,8 @@ path_t searchPath (
 
 
 	openSet.insert( start );
-	g_score[start] = 0;
-	f_score[start] = 0 + h( start, goal );
+	g_score[start] = 0; ///< distance from start
+	f_score[start] = 0 + h( start, goal ); ///< estimate distancd to goal
 
 	/// generate result path
 	auto reconstructPath = [&]( point_t best )->path_t {
