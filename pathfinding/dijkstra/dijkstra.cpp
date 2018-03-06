@@ -15,6 +15,7 @@
 #include <fstream>
 #include <limits>
 #include <set>
+#include <map>
 #include <string>
 
 using namespace std;
@@ -31,34 +32,38 @@ typedef vector < vector < int > > graph_t;
 /**
  * The dijkstra implementation. G is a graph in 
  */
-vector < double > dijkstra( graph_t &G , int initialNode );
+vector < double > dijkstra( graph_t &G , int initialNode, int dest );
 
 /**
  * initialNode - the initial node
  * G - graph
  * */
-vector < double > dijkstra( graph_t &G , int initialNode ) {
-	int node; ///< current node
-	int iterNum=0; 	///< steps counter
-	vector < double > distG(G[0].size()); ///< loss value for nodes (koszt dotarcia do węzła)
-	set<int> unvisited;  ///< unvisited nodes
+vector < double > dijkstra( graph_t &G , int initialNode, int dest ) {
+	int node;                                                            ///< current node
+	int iterNum=0; 	                                                    ///< steps counter
+	vector < double > distG(G[0].size());                               ///< loss value for nodes (koszt dotarcia do węzła)
+	set<int> unvisited;                                                 ///< unvisited nodes
+	map<int,int> cameFrom;
 
-	for (int i = 0; i < distG.size(); i++) { ///< itinialization, set every node to have INF cost, and to be unvisited
+	for (int i = 0; i < distG.size(); i++) {                            ///< itinialization, set every node to have INF cost, and to be unvisited
 		distG[i] = INF;
 		unvisited.insert(i);
 	}
-    unvisited.erase(initialNode); ///< we visited initial node
-	distG[initialNode] = 0;   ///< as well as its cost is 0
+    unvisited.erase(initialNode);                                       ///< we visited initial node
+	distG[initialNode] = 0;                                             ///< as well as its cost is 0
+	cameFrom[initialNode] = -1;
 
-	node = initialNode; ///< the first node - we start from it
+	node = initialNode;                                                 ///< the first node - we start from it
 	/// we only repeat if there are unvisited nodes.
 	while (unvisited.size() > 0) {
             int nnode = -1; ///< nnode - the node with least cost value from node
             for (auto unvisitedNode : unvisited) { ///< check every unvisited node, update distG (cost) table, and find shortest uptil now (nnode)
 				if (G[node][unvisitedNode] != INF) { ///< we only take into account possible routes - there is an edge between node and unvisitedNode
 					/// if the edge (node-unvisitedNode) from node is with less cost then the current best, update:
-					if ((distG[unvisitedNode] == INF) || (distG[unvisitedNode] > G[node][unvisitedNode] + distG[node])) {
+					if ((distG[unvisitedNode] == INF) || 
+					    (distG[unvisitedNode] > G[node][unvisitedNode] + distG[node])) {
 						distG[unvisitedNode] = G[node][unvisitedNode] + distG[node];
+						cameFrom[unvisitedNode] = node;
 					}
 					if (nnode == -1) nnode = unvisitedNode;
 					/// if the cost is better (lower), then we update nnode
@@ -70,6 +75,17 @@ vector < double > dijkstra( graph_t &G , int initialNode ) {
             unvisited.erase(node); ///< we will not come back to node
             node = nnode; ///< we go to the node with least cost
 	};
+	for (auto e : cameFrom) {
+		cout << "{" << e.first << " came from " << e.second << "}" << endl;
+	}
+	
+	int e = dest;
+	while (e != -1) {
+		cout << e << " ";
+		e = cameFrom[e];
+	}
+	cout << e << endl;
+	
 	/// return cost table
 	return distG;
 }
@@ -111,7 +127,7 @@ int main() {
 	}
 	cout << endl;
 	cout << "costs to reach vertice from 0 are:" << endl;
-    auto path = dijkstra( G , 0 );
+    auto path = dijkstra( G , 0 ,2);
     for (const auto &e: path) {
 		cout << e << " ";
 	}

@@ -61,7 +61,6 @@ path_t searchPath (
 		const std::function < bool (const tile_t &) > accessible, ///< function determining if the point is "walkable"
 		const std::function < float (const point_t &,const point_t &)> h ///< heuristic function
 	) {
-	path_t path;
 	set<point_t > closedSet;
 	set<point_t > openSet;
 	map<point_t, point_t > came_from;
@@ -82,36 +81,44 @@ path_t searchPath (
 	g_score[start] = 0;
 	f_score[start] = 0 + h(start, goal);
 
-	while (openSet.size() > 0) {
-		/// searching openSet element with lowest f_score and saving it to "best"
-		point_t toCheck;
+	/// generate result path
+	auto reconstructPath = [&](point_t best)->path_t {
+		path_t path;
+		path_t pathInvert;
+		point_t current = goal;
+		pathInvert.push_back(current);
+		while (came_from.count(current) > 0) {
+			current = came_from[current];
+			pathInvert.push_back(current);
+		}
+		for (; pathInvert.size() > 0; pathInvert.pop_back()) {
+			path.push_back(pathInvert.back());
+		}
+		return path;
+	}; 
+	
+	auto popBestFromOpenSet = [&](){
 		point_t best = *openSet.begin();
 		for (auto &b : openSet) {
 				if (f_score[best] > f_score[b]) best = b;
 		}
-		if (best == goal) {
-			path_t pathInvert;
-			point_t current = goal;
-			pathInvert.push_back(current);
-			while (came_from.count(current) > 0) {
-				current = came_from[current];
-				pathInvert.push_back(current);
-			}
-			for (; pathInvert.size() > 0; pathInvert.pop_back()) {
-				path.push_back(pathInvert.back());
-			}
-			return path;
-		}
-
 		openSet.erase(best);
+		return best;
+	};
+
+	while (openSet.size() > 0) {
+		/// searching openSet element with lowest f_score and saving it to "best"
+		point_t best = popBestFromOpenSet();
+
+		if (best == goal) return reconstructPath(best);
+
 		closedSet.insert(best);
-		//if (openSet.size() > 300) return vector<point_t>(); // we can limit open set, so to terminate if it is greater than given 
 		if ((limitD > 0) && (f_score[best] > limitD)) return path_t();
 
 		/// check every possible direction
 		for (int i = 0; i < 8; i++) {
-			toCheck[0] = best[0] + pnext[i][0];
-			toCheck[1] = best[1] + pnext[i][1];
+			/// next direction to verify
+			point_t toCheck(best[0] + pnext[i][0], best[1] + pnext[i][1]);
 			/// can we go there?
 			if ((toCheck[0] >= 0) && (toCheck[1] >= 0) && (toCheck[0] < world.width) && (toCheck[1] < world.height)) {
 				/// is it ok to walk on it, and it is not in closedSet?
@@ -132,7 +139,7 @@ path_t searchPath (
 		}
 	}
 
-	return path;
+	return {}; /// no path found
 }
 
 void savePng( const std::string &fname, image_t image ) {
