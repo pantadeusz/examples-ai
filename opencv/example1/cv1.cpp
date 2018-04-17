@@ -17,7 +17,7 @@ int main() {
 	createTrackbar("hiRange2", "jakostam",&(hiRange[2]), 255);
 	VideoCapture camera(0);
 	//VideoCapture backgroundvid("Multiwave.wmv");
-	Mat background = imread("ladnemiejsce.jpg", CV_LOAD_IMAGE_COLOR);
+	Mat background = imread("plaza.jpg", CV_LOAD_IMAGE_COLOR);
 	while ( waitKey(1) != 27  ) {
 		Mat frame;
 		Mat backgroundScaled;
