@@ -45,11 +45,9 @@ void find_squares( const Mat& image, vector<vector<Point> >& squares ) {
 	Canny( gray0, gray, lowThreshold, lowThreshold*2, 3 ); //
 
 	dilate( gray, gray, Mat(), Point( -1,-1 ) );
-	imshow("po dilate", gray);
+	//imshow("po dilate", gray);
 	//imshow("c",gray);
 	findContours( gray, contours, CV_RETR_LIST, CV_CHAIN_APPROX_SIMPLE );
-
-
 
 	vector<Point> approx;
 	for ( size_t i = 0; i < contours.size(); i++ ) {
@@ -84,7 +82,7 @@ void find_squares( const Mat& image, vector<vector<Point> >& squares ) {
 	for (int i = 0; i < squares.size(); i++) {
 		drawContours(m, squares, i, Scalar(255,0,0));
 	}
-	imshow("sq",m);
+	//imshow("sq",m);
 }
 
 // rysowanie obrazu display do obrazu dstMat w prostokacie (dla obrazu nakładanego w formacie BGR)
@@ -107,7 +105,6 @@ int main( int argc, char** argv ) {
 	do {
 		Mat img,img0;
 		Mat display;
-		//img = imread("squ.jpg", CV_LOAD_IMAGE_COLOR);
 		cap >> img;
 		img0 = img.clone();
 		vector<vector<Point> > squares;
@@ -127,25 +124,9 @@ int main( int argc, char** argv ) {
 			for ( int i = 0; i < squareSel.size(); i++ ) {
 				Mat imgD(256, 256, img.type());
 				vector<Point2f> dst;
-				// szukamy lewego gornego rogu
-				int minI = 0;
-				int min = sqrt(squareSel[i][minI].x*squareSel[i][minI].x+squareSel[i][minI].y*squareSel[i][minI].y);
-				for ( int j = 1; j < 4; j++ ) {
-					if ((sqrt(squareSel[i][j].x*squareSel[i][j].x+squareSel[i][j].y*squareSel[i][j].y)) > (min)) {
-						minI = j;
-						min = sqrt(squareSel[i][minI].x*squareSel[i][minI].x+squareSel[i][minI].y*squareSel[i][minI].y);
-					};
-				}
 				// tworzymy prostokat
 				for ( int j = 0; j < 4; j++ )
-					dst.push_back( squareSel[i][(j+minI+3)%4] ); 
-				if (contourArea(dst,true) < 0) {
-					for ( int j = 0; j < 2; j++ ) {
-						auto t = dst[3-j];
-						dst[3-j] = dst[j];
-						dst[j] = t;
-					}
-				}
+					dst.push_back( squareSel[i][j] ); 
 				imageToImage(img0, imgD, dst );
 				cvtColor( imgD, imgD, COLOR_BGR2GRAY );
 				equalizeHist( imgD, imgD );
