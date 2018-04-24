@@ -1,8 +1,8 @@
 /**
  * @file objectDetection2.cpp
  * @author A. Huaman ( based in the classic facedetect.cpp in samples/c )
- * @brief A simplified version of facedetect.cpp, show how to 
- *       load a cascade classifier and how to find objects (Face + eyes) 
+ * @brief A simplified version of facedetect.cpp, show how to
+ *       load a cascade classifier and how to find objects (Face + eyes)
  *       in a video stream - Using LBP here
  */
 // kod zmodyfikowany na potrzeby zajęć z NAI na PJATK Gdańsk
@@ -42,7 +42,7 @@ int main( void ) {
 		printf( "--(!)Error loading eyes cascade\n" );
 		return -1;
 	};
-	glasses = imread( "dwi.png",-1 );
+	glasses = imread( "dwi.png", -1 );
 	std::cout << "C:" << glasses.channels() << "\n";
 	//-- 2. Read the video stream
 	capture.open( -1 );
@@ -56,12 +56,12 @@ int main( void ) {
 			printf( " --(!) No captured frame -- Break!" );
 			break;
 		}
-
+		
 		//-- 3. Apply the classifier to the frame
 		detectAndDisplay( frame );
 
 		//-- bail out if escape was pressed
-		int c = waitKey( 10 );
+		int c = waitKey( 1 );
 		if( ( char )c == 27 ) {
 			break;
 		}
@@ -71,36 +71,30 @@ int main( void ) {
 
 // funkcja nakladajaca obraz z przezroczystoscia
 // w oparciu o http://dsynflo.blogspot.in/2014/08/simplar-2-99-lines-of-code-for.html
-void imageOverImageBGRA( const Mat &srcMat, Mat &dstMat, const vector<Point2f> &dst ) {
+void imageOverImageBGRA( const Mat &srcMat, Mat &dstMat, const vector<Point2f> &dstFrameCoordinates ) {
 	if ( srcMat.channels() != 4 ) throw "Nakladam tylko obrazy BGRA";
 
-	vector<Point2f> src; // wspolrzedne punktow z obrazu nakladanego
+	// tylko kanal alpha
 	vector<Mat> rgbaChannels( 4 );
-	Mat cpy_img( dstMat.rows, dstMat.cols, dstMat.type() );
-	Mat neg_img( dstMat.rows, dstMat.cols, dstMat.type() );
-	Mat blank( srcMat.rows, srcMat.cols, srcMat.type() );
-
-	src.push_back( Point2f( 0,0 ) );
-	src.push_back( Point2f( srcMat.cols,0 ) );
-	src.push_back( Point2f( srcMat.cols, srcMat.rows ) );
-	src.push_back( Point2f( 0, srcMat.rows ) );
-	Mat warp_matrix = getPerspectiveTransform( src, dst );
+	Mat srcAlphaMask( srcMat.rows, srcMat.cols, srcMat.type() );
 	split( srcMat, rgbaChannels );
-	rgbaChannels[0] = rgbaChannels[3]; // generujemy maske
-	rgbaChannels[1] = rgbaChannels[3];
-	rgbaChannels[2] = rgbaChannels[3];
-	rgbaChannels.pop_back();
-	merge( rgbaChannels,blank );
+	rgbaChannels = {rgbaChannels[3],rgbaChannels[3],rgbaChannels[3]};
+	merge( rgbaChannels, srcAlphaMask );
 
+	// wspolrzedne punktow z obrazu nakladanego
+	vector<Point2f> srcFrameCoordinates = {{0,0},{(float)srcMat.cols,0},{(float)srcMat.cols,(float)srcMat.rows},{0,(float)srcMat.rows}};
+	Mat warp_matrix = getPerspectiveTransform( srcFrameCoordinates, dstFrameCoordinates );
+
+	Mat cpy_img( dstMat.rows, dstMat.cols, dstMat.type() );
+	warpPerspective( srcAlphaMask, cpy_img, warp_matrix, Size( cpy_img.cols, cpy_img.rows ) ); // Transform a srcAlphaMask overlay image to position
+	Mat neg_img( dstMat.rows, dstMat.cols, dstMat.type() );
 	warpPerspective( srcMat, neg_img, warp_matrix, Size( neg_img.cols, neg_img.rows ) ); // Transform overlay Image to the position - [ITEM1]
-	warpPerspective( blank, cpy_img, warp_matrix, Size( cpy_img.cols, neg_img.rows ) ); // Transform a blank overlay image to position
-	dstMat = dstMat-cpy_img;
-	rgbaChannels = vector<Mat>( 3 );
-	split( neg_img, rgbaChannels );
-	rgbaChannels.pop_back();
-	merge( rgbaChannels,neg_img );
-	neg_img = neg_img.mul(cpy_img);
-	dstMat = dstMat+neg_img;
+	dstMat = dstMat - cpy_img;
+	
+	cvtColor(neg_img, neg_img, CV_BGRA2BGR);
+	cpy_img = cpy_img / 255;
+	neg_img = neg_img.mul( cpy_img );
+	dstMat = dstMat + neg_img;
 }
 
 
@@ -110,23 +104,23 @@ void detectAndDisplay( Mat frame ) {
 
 	cvtColor( frame, frame_gray, COLOR_BGR2GRAY );
 	equalizeHist( frame_gray, frame_gray );
-	imshow("frame_gray",frame_gray);
+	//imshow( "frame_gray", frame_gray );
 
 	//-- Wykrywamy twarz
 	face_cascade.detectMultiScale( frame_gray, faces, 1.1, 2, 0, Size( 12, 12 ) );
 
 	for( size_t i = 0; i < faces.size(); i++ ) {
 		Mat faceROI = frame_gray( faces[i] ); // range of interest
-		imshow ("ROI", faceROI);
+		//imshow ( "ROI", faceROI );
 		std::vector<Rect> eyes;
 		eyes_cascade.detectMultiScale( faceROI, eyes, 1.1, 2, 0 | CASCADE_SCALE_IMAGE, Size( 5, 5 ) );
 		if( eyes.size() > 0 ) {
 			vector<Point2f> dst;
-			dst.push_back( Point2f( faces[i].x               ,faces[i].y+faces[i].height*5/20               ) );
-			dst.push_back( Point2f( faces[i].x+faces[i].width,faces[i].y+faces[i].height*5/20               ) );
-			dst.push_back( Point2f( faces[i].x+faces[i].width,faces[i].y+faces[i].height*5/20+faces[i].height*3/10 ) );
-			dst.push_back( Point2f( faces[i].x               ,faces[i].y+faces[i].height*5/20+faces[i].height*3/10 ) );
-			imageOverImageBGRA( glasses.clone(),frame, dst );
+			dst.push_back( Point2f( faces[i].x, faces[i].y + faces[i].height * 5 / 20 ) );
+			dst.push_back( Point2f( faces[i].x + faces[i].width, faces[i].y + faces[i].height * 5 / 20               ) );
+			dst.push_back( Point2f( faces[i].x + faces[i].width, faces[i].y + faces[i].height * 5 / 20 + faces[i].height * 3 / 10 ) );
+			dst.push_back( Point2f( faces[i].x, faces[i].y + faces[i].height * 5 / 20 + faces[i].height * 3 / 10 ) );
+			imageOverImageBGRA( glasses.clone(), frame, dst );
 		}
 	}
 	cv::flip( frame, frame, 1 );
