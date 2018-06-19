@@ -1,5 +1,9 @@
 #!/bin/bash
 
+if [ "$1" = "" ]; then
+    echo "$0 [nazwa testowanego programu]"
+    exit 1
+fi
 
 echo "10 10 100 100" > test0.input.txt
 echo "100 100 10 10" > test1.input.txt
