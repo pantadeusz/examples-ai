@@ -10,7 +10,7 @@ int main( int argc, char** argv ) {
 	bool capturing = true;
 	// Question for you
 	// cv::VideoCapture cap( "szukaj_zielonego.webm" );
-	cv::VideoCapture cap(0);
+	//cv::VideoCapture cap(0);
 	if ( !cap.isOpened() ) {
 		std::cerr << "error opening frames source" << std::endl;
 		return -1;

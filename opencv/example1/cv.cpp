@@ -6,7 +6,8 @@ using namespace std;
 using namespace cv;
 
 int main( int argc, char** argv ) {
-	double w = 320,h = 240,fps;
+	//int w = 320,h = 240,fps;
+	int w = 640,h = 480,fps;
 	bool continueCapture = true;
 	namedWindow( "efekty", CV_WINDOW_AUTOSIZE );
 	Mat background;
@@ -22,7 +23,7 @@ int main( int argc, char** argv ) {
 		if ( cap.read( frame ) ) {
 			resize(frame,frame, {w,h});
 			Mat maskWhite, maskBlack;
-			inRange(frame,Scalar(160,0,0),Scalar(255,255,255),maskWhite); 	
+			inRange(frame,Scalar(160,0,0),Scalar(255,255,255),maskWhite);
 			bitwise_not(maskWhite,maskBlack); 	
 			Mat frame2;
 			Mat bg2;
@@ -30,9 +31,8 @@ int main( int argc, char** argv ) {
 			background.copyTo(bg2, maskWhite);
 			frame = frame2 + bg2;
 			imshow( "efekty", frame );
-			
 		} else continueCapture = false;
-		if( (waitKey( 33 )&0x0ff) == 27 ) continueCapture = false;
+		if( (waitKey( 15 )&0x0ff) == 27 ) continueCapture = false;
 	}
 	return 0;
 }

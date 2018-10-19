@@ -15,7 +15,6 @@
 #include <cv.hpp>
 #include <highgui.h>
 #include <iostream>
-#include <stdio.h>
 
 using namespace std;
 using namespace cv;
@@ -24,7 +23,10 @@ CascadeClassifier face_cascade;
 CascadeClassifier eyes_cascade;
 Mat glasses;
 /** Function Headers */
-void detectAndDisplay( Mat frame );
+vector<Point2f> detectAndDisplay( Mat frame );
+void imageOverImageBGRA( const Mat &srcMat, Mat &dstMat, const vector<Point2f> &dstFrameCoordinates );
+
+
 
 /**
  * @function main
@@ -35,36 +37,28 @@ int main( void ) {
 
 	//-- 1. Load the cascade
 	if( !face_cascade.load( String( "lbpcascade_frontalface.xml" ) ) ) {
-		printf( "--(!)Error loading face cascade\n" );
-		return -1;
+		return -9;
 	};
 	if( !eyes_cascade.load( String( "haarcascade_eye_tree_eyeglasses.xml" ) ) ) {
-		printf( "--(!)Error loading eyes cascade\n" );
-		return -1;
+		return -8;
 	};
 	glasses = imread( "dwi.png", -1 );
 	std::cout << "C:" << glasses.channels() << "\n";
-	//-- 2. Read the video stream
 	capture.open( -1 );
 	if ( ! capture.isOpened() ) {
-		printf( "--(!)Error opening video capture\n" );
-		return -1;
+		return -7;
 	}
 
 	while ( capture.read( frame ) ) {
-		if( frame.empty() ) {
-			printf( " --(!) No captured frame -- Break!" );
-			break;
-		}
+		if( frame.empty() ) return -1;
 		
-		//-- 3. Apply the classifier to the frame
-		detectAndDisplay( frame );
+		auto detected_eyes = detectAndDisplay( frame );
+		
+		if (detected_eyes.size()) imageOverImageBGRA( glasses.clone(), frame, detected_eyes );
+		cv::flip( frame, frame, 1 );
+		imshow( "DWI", frame );
 
-		//-- bail out if escape was pressed
-		int c = waitKey( 1 );
-		if( ( char )c == 27 ) {
-			break;
-		}
+		if( (waitKey( 1 )&0x0ff) == 27 ) return 0;
 	}
 	return 0;
 }
@@ -86,9 +80,9 @@ void imageOverImageBGRA( const Mat &srcMat, Mat &dstMat, const vector<Point2f> &
 	Mat warp_matrix = getPerspectiveTransform( srcFrameCoordinates, dstFrameCoordinates );
 
 	Mat cpy_img( dstMat.rows, dstMat.cols, dstMat.type() );
-	warpPerspective( srcAlphaMask, cpy_img, warp_matrix, Size( cpy_img.cols, cpy_img.rows ) ); // Transform a srcAlphaMask overlay image to position
+	warpPerspective( srcAlphaMask, cpy_img, warp_matrix, Size( cpy_img.cols, cpy_img.rows ) );
 	Mat neg_img( dstMat.rows, dstMat.cols, dstMat.type() );
-	warpPerspective( srcMat, neg_img, warp_matrix, Size( neg_img.cols, neg_img.rows ) ); // Transform overlay Image to the position - [ITEM1]
+	warpPerspective( srcMat, neg_img, warp_matrix, Size( neg_img.cols, neg_img.rows ) );
 	dstMat = dstMat - cpy_img;
 	
 	cvtColor(neg_img, neg_img, CV_BGRA2BGR);
@@ -98,15 +92,14 @@ void imageOverImageBGRA( const Mat &srcMat, Mat &dstMat, const vector<Point2f> &
 }
 
 
-void detectAndDisplay( Mat frame ) {
+vector<Point2f> detectAndDisplay( Mat frame ) {
 	std::vector<Rect> faces;
 	Mat frame_gray;
 
 	cvtColor( frame, frame_gray, COLOR_BGR2GRAY );
 	equalizeHist( frame_gray, frame_gray );
-	//imshow( "frame_gray", frame_gray );
 
-	//-- Wykrywamy twarz
+	// detect face
 	face_cascade.detectMultiScale( frame_gray, faces, 1.1, 2, 0, Size( 12, 12 ) );
 
 	for( size_t i = 0; i < faces.size(); i++ ) {
@@ -115,15 +108,14 @@ void detectAndDisplay( Mat frame ) {
 		std::vector<Rect> eyes;
 		eyes_cascade.detectMultiScale( faceROI, eyes, 1.1, 2, 0 | CASCADE_SCALE_IMAGE, Size( 5, 5 ) );
 		if( eyes.size() > 0 ) {
-			vector<Point2f> dst;
-			dst.push_back( Point2f( faces[i].x, faces[i].y + faces[i].height * 5 / 20 ) );
-			dst.push_back( Point2f( faces[i].x + faces[i].width, faces[i].y + faces[i].height * 5 / 20               ) );
-			dst.push_back( Point2f( faces[i].x + faces[i].width, faces[i].y + faces[i].height * 5 / 20 + faces[i].height * 3 / 10 ) );
-			dst.push_back( Point2f( faces[i].x, faces[i].y + faces[i].height * 5 / 20 + faces[i].height * 3 / 10 ) );
-			imageOverImageBGRA( glasses.clone(), frame, dst );
+			vector<Point2f> dst = {
+				Point2f( faces[i].x, faces[i].y + faces[i].height * 5 / 20 ) ,
+				Point2f( faces[i].x + faces[i].width, faces[i].y + faces[i].height * 5 / 20               ) ,
+				Point2f( faces[i].x + faces[i].width, faces[i].y + faces[i].height * 5 / 20 + faces[i].height * 3 / 10 ) ,
+				Point2f( faces[i].x, faces[i].y + faces[i].height * 5 / 20 + faces[i].height * 3 / 10 )
+			};
+			return dst;
 		}
 	}
-	cv::flip( frame, frame, 1 );
-
-	imshow( "DWI", frame );
+	return {};
 }
