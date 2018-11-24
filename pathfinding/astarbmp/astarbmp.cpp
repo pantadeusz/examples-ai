@@ -35,6 +35,7 @@ public:
 		( *this )[1] = y;
 	};
 };
+
 namespace std {
 template <>
 struct hash<point_t> {
@@ -62,7 +63,7 @@ public:
 path_t searchPath (
 	const point_t &start, ///< start point
 	const point_t &goal, ///< goal point
-	const std::function < float ( const point_t &, const point_t & )> dist, ///< heuristic function
+	const std::function < float ( const point_t &, const point_t & )> dist, ///< actual distance between points
 	const std::function < float ( const point_t &, const point_t & )> h, ///< heuristic function
 	const std::function < std::list < point_t > ( const point_t & )> accessible_verts ///< returns accessible vertices
 ) {
