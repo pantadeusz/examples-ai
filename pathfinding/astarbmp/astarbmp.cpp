@@ -169,12 +169,13 @@ int main(int argc, char **argv) {
       e = {best[0] + e[0], best[1] + e[1]};
     ret.erase(remove_if(ret.begin(), ret.end(),
                              [&img](const point_t &candidate_node) {
+								 // remove everything that is incorrect
                                return (candidate_node[0] < 0) ||
                                       (candidate_node[1] < 0) ||
                                       (candidate_node[0] >= img.width) ||
                                       (candidate_node[1] >= img.height) ||
                                       (img(candidate_node) >=
-                                       128); // put your condition here
+                                       128);
                              }),
               ret.end());
     return ret;
