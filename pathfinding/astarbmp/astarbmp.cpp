@@ -2,7 +2,7 @@
  A* Algorithm example
 
  Tadeusz Puźniakowski
- 2016, 2017, 2018
+ 2016, 2017, 2018, 2019, 2020
  MIT License
  */
 #include "thirdparty/lodepng.cpp"
@@ -18,15 +18,91 @@
 #include <set>
 #include <vector>
 
+using std::function;
 using std::list;
 using std::map;
 using std::max_element;
-using std::set;
-using std::vector;
-using std::string;
-using std::reverse;
-using std::function;
 using std::remove_if;
+using std::reverse;
+using std::set;
+using std::string;
+using std::vector;
+
+/**
+ * @brief generate result path
+ *
+ * @param came_from the dictionary that represents the move directions. key is
+ * destination, and value is the source node
+ * @param best
+ * @param goal
+ * @return Container
+ */
+template <class Node, class Container>
+Container reconstructPath(map<Node, Node> &came_from, Node goal) {
+  Container reconstructed_path;
+  Node current = goal;
+  reconstructed_path.push_back(current);
+  while (came_from.count(current) > 0) {
+    current = came_from[current];
+    reconstructed_path.push_back(current);
+  }
+  reverse(reconstructed_path.begin(),
+          reconstructed_path.end()); // 9 8 7 6 5 4 3 2 1
+  return reconstructed_path;
+}
+
+template <class Node, class Path>
+Path searchPath(
+    const Node &start, ///< start point
+    const Node &goal,  ///< goal point
+    const function<float(const Node &, const Node &)>
+        dist, ///< actual distance between adjacent points
+    const function<float(const Node &, const Node &)> h, ///< heuristic function
+    const function<list<Node>(const Node &)>
+        accessible_verts ///< returns accessible vertices
+) {
+  set<Node> closedSet;
+  set<Node> openSet;
+  map<Node, Node> came_from;
+  map<Node, float> g_score;
+  map<Node, float> f_score;
+
+  openSet.insert(start);
+  g_score[start] = 0;                  ///< distance from start
+  f_score[start] = 0 + h(start, goal); ///< estimate distancd to goal
+
+  while (openSet.size() > 0) {
+    /// searching openSet element with lowest f_score and saving it to "best"
+    const Node &best = *max_element(
+        openSet.begin(), openSet.end(),
+        [&f_score](Node best, Node b) { return f_score[best] > f_score[b]; });
+    openSet.erase(best); ///< we took the best, so it is no longer in open set
+    if (best == goal)
+      return reconstructPath<Node, Path>(came_from, goal);
+    closedSet.insert(best);
+    /// check every possible direction
+    for (const Node &neighbor : accessible_verts(best)) {
+      /// not in closed set?
+      if (closedSet.count(neighbor) == 0) {
+        /// calculate temporary t_g_score that is the sum of g_score of current
+        /// node (best) and actual distance between (best-neighbour)
+        float t_g_score = g_score[best] + dist(neighbor, best);
+        /// we should put neighbor to current openSet - it can be evaluated
+        /// later
+        openSet.insert(neighbor);
+        /// if the neighbor does not exist, we assume that it is with inf value
+        if ((g_score.count(neighbor) == 0) || (t_g_score < g_score[neighbor])) {
+          came_from[neighbor] = best;
+          g_score[neighbor] = t_g_score;
+          f_score[neighbor] = g_score[neighbor] + h(neighbor, goal);
+        }
+      }
+    }
+  }
+  return {}; /// no path found
+}
+
+////////////////////////// END OF A*  /////////////////////
 
 /**
  * class representing node in graph. In this particular case it is point_t.
@@ -34,18 +110,24 @@ using std::remove_if;
 
 class point_t : public std::array<int, 2> {
 public:
-  point_t() : std::array<int, 2>() {
-    (*this)[0] = 0;
-    (*this)[1] = 0;
-  };
-  point_t(int x, int y) : std::array<int, 2>() {
+  point_t(int x = 0, int y = 0) : std::array<int, 2>() {
     (*this)[0] = x;
     (*this)[1] = y;
   };
 };
+namespace std {
+/**
+ * @brief hash function for point_t
+ */
+template <> struct hash<point_t> {
+  size_t operator()(const point_t &k) const {
+    return ((k[0] << sizeof(k[0]) * 4) | (k[0] >> sizeof(k[0]) * 4)) ^ k[1];
+  }
+};
+} // namespace std
 
 /**
- * class representing paht
+ * class representing path
  * */
 class path_t : public list<point_t> {};
 
@@ -86,97 +168,32 @@ public:
   }
 };
 
-/// generate result path
-auto reconstructPath = [](map<point_t, point_t> &came_from, point_t best,
-                          point_t goal) -> path_t {
-  path_t reconstructed_path;
-  point_t current = goal;
-  reconstructed_path.push_back(current);
-  while (came_from.count(current) > 0) {
-    current = came_from[current];
-    reconstructed_path.push_back(current);
-  }
-  reverse(reconstructed_path.begin(),reconstructed_path.end());    // 9 8 7 6 5 4 3 2 1
-  return reconstructed_path;
-};
-
-path_t searchPath(const point_t &start, ///< start point
-                  const point_t &goal,  ///< goal point
-                  const function<float(const point_t &, const point_t &)>
-                      dist, ///< actual distance between adjacent points
-                  const function<float(const point_t &, const point_t &)>
-                      h, ///< heuristic function
-                  const function<list<point_t>(const point_t &)>
-                      accessible_verts ///< returns accessible vertices
-) {
-  set<point_t> closedSet;
-  set<point_t> openSet;
-  map<point_t, point_t> came_from;
-  map<point_t, float> g_score;
-  map<point_t, float> f_score;
-
-  openSet.insert(start);
-  g_score[start] = 0;                  ///< distance from start
-  f_score[start] = 0 + h(start, goal); ///< estimate distancd to goal
-
-  while (openSet.size() > 0) {
-    /// searching openSet element with lowest f_score and saving it to "best"
-    point_t best = *max_element(
-        openSet.begin(), openSet.end(),
-        [&f_score](point_t best, point_t b) { return f_score[best] > f_score[b]; });
-    openSet.erase(best); ///< we took the best, so it is no longer in open set
-    if (best == goal)
-      return reconstructPath(came_from, best, goal);
-    closedSet.insert(best);
-    /// check every possible direction
-    for (const point_t &neighbor : accessible_verts(best)) {
-      /// not in closed set?
-      if (closedSet.count(neighbor) == 0) {
-        /// calculate temporary t_g_score that is the sum of g_score of current
-        /// node (best) and actual distance between (best-neighbour)
-        float t_g_score = g_score[best] + dist(neighbor, best);
-        /// we should put neighbor to current openSet - it can be evaluated
-        /// later
-        openSet.insert(neighbor);
-        /// if the neighbor does not exist, we assume that it is with inf value
-        if ((g_score.count(neighbor) == 0) || (t_g_score < g_score[neighbor])) {
-          came_from[neighbor] = best;
-          g_score[neighbor] = t_g_score;
-          f_score[neighbor] = g_score[neighbor] + h(neighbor, goal);
-        }
-      }
-    }
-  }
-  return {}; /// no path found
-}
-
 int main(int argc, char **argv) {
   auto img = image_t::load("sample.png");
 
   point_t start(21, 17);
   point_t goal(211, 132);
 
-/**
- * function that returns the list of accessible vertices from the current.
- * It takes current coordinates and returns coordinate shifted by the direction. It also
- * checks if we are in the image or outside.
- * */
+  /**
+   * function that returns the list of accessible vertices from the current.
+   * It takes current coordinates and returns coordinate shifted by the
+   * direction. It also checks if we are in the image or outside.
+   * */
   const function<list<point_t>(const point_t &)> accessible_verts =
       [&](const point_t &best) -> list<point_t> {
     list<point_t> ret = {{+0, -1}, {-1, -1}, {-1, +0}, {-1, +1},
-                              {+0, +1}, {+1, +1}, {+1, +0}, {+1, -1}};
+                         {+0, +1}, {+1, +1}, {+1, +0}, {+1, -1}};
     for (auto &e : ret)
       e = {best[0] + e[0], best[1] + e[1]};
     ret.erase(remove_if(ret.begin(), ret.end(),
-                             [&img](const point_t &candidate_node) {
-								 // remove everything that is incorrect
-                               return (candidate_node[0] < 0) ||
-                                      (candidate_node[1] < 0) ||
-                                      (candidate_node[0] >= img.width) ||
-                                      (candidate_node[1] >= img.height) ||
-                                      (img(candidate_node) >=
-                                       128);
-                             }),
+                        [&img](const point_t &candidate_node) {
+                          // remove everything that is incorrect
+                          return (candidate_node[0] < 0) ||
+                                 (candidate_node[1] < 0) ||
+                                 (candidate_node[0] >= img.width) ||
+                                 (candidate_node[1] >= img.height) ||
+                                 (img(candidate_node) >= 128);
+                        }),
               ret.end());
     return ret;
   };
@@ -186,9 +203,11 @@ int main(int argc, char **argv) {
   };
   auto dist_f = heuristic_f;
 
-  for (auto p :
-       searchPath(start, goal, dist_f, heuristic_f, accessible_verts)) {
-    img(p) = 128; ///< draw path
+  for (auto p : searchPath<point_t, path_t>(start, goal, dist_f, heuristic_f,
+                                            accessible_verts)) {
+    static int color = 0;
+    color = (color + 16) % 128;
+    img(p) = 128 + color; //; ///< draw path
   }
   img.save("result.png");
   return 0;
