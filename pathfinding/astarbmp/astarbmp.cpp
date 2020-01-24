@@ -56,12 +56,12 @@ Container reconstructPath(map<Node, Node> &came_from, Node goal) {
  * 
  * @tparam Node the node type
  * @tparam Path the path type. can be for example std::list<Node>
- * @param start 
- * @param goal 
- * @param dist 
- * @param h 
- * @param accessible_verts 
- * @return Path 
+ * @param start the start node 
+ * @param goal the goal to reach
+ * @param dist distance function
+ * @param h heuristic function
+ * @param accessible_verts the function that returns accesible nodes from the given node
+ * @return Path the generated path
  */
 template <class Node, class Path = std::list<Node> >
 Path searchPath(
