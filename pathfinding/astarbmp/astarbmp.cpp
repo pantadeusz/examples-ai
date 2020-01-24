@@ -51,7 +51,19 @@ Container reconstructPath(map<Node, Node> &came_from, Node goal) {
   return reconstructed_path;
 }
 
-template <class Node, class Path>
+/**
+ * @brief calculates shortest path using A* algorithm
+ * 
+ * @tparam Node the node type
+ * @tparam Path the path type. can be for example std::list<Node>
+ * @param start 
+ * @param goal 
+ * @param dist 
+ * @param h 
+ * @param accessible_verts 
+ * @return Path 
+ */
+template <class Node, class Path = std::list<Node> >
 Path searchPath(
     const Node &start, ///< start point
     const Node &goal,  ///< goal point
@@ -203,7 +215,7 @@ int main(int argc, char **argv) {
   };
   auto dist_f = heuristic_f;
 
-  for (auto p : searchPath<point_t, path_t>(start, goal, dist_f, heuristic_f,
+  for (auto p : searchPath<point_t>(start, goal, dist_f, heuristic_f,
                                             accessible_verts)) {
     static int color = 0;
     color = (color + 16) % 128;
