@@ -44,8 +44,6 @@ int main()
 {
 
     uniform_real_distribution<double> uniform_dist(-5, 5);
-
-    // Seed with a real random value, if available
     int max_iterations = 100000;
 
     auto sphere_f = [](vector<double> x) {
