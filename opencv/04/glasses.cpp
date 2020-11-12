@@ -12,8 +12,8 @@
 // elementy związane z przekształceniem geometrycznym http://dsynflo.blogspot.in/2014/08/simplar-2-99-lines-of-code-for.html
 // zachęcam do zapoznania się z https://docs.opencv.org/2.4/modules/imgproc/doc/geometric_transformations.html
 
-#include <cv.hpp>
-#include <highgui.h>
+#include <opencv2/opencv.hpp>
+#include <opencv2/highgui.hpp>
 #include <iostream>
 
 using namespace std;
@@ -36,10 +36,10 @@ int main( void ) {
 	Mat frame;
 
 	//-- 1. Load the cascade
-	if( !face_cascade.load( String( "lbpcascade_frontalface.xml" ) ) ) {
+	if( !face_cascade.load(  "lbpcascade_frontalface.xml"  ) ) {
 		return -9;
 	};
-	if( !eyes_cascade.load( String( "haarcascade_eye_tree_eyeglasses.xml" ) ) ) {
+	if( !eyes_cascade.load( "haarcascade_eye_tree_eyeglasses.xml" ) ) {
 		return -8;
 	};
 	glasses = imread( "dwi.png", -1 );
@@ -85,7 +85,7 @@ void imageOverImageBGRA( const Mat &srcMat, Mat &dstMat, const vector<Point2f> &
 	warpPerspective( srcMat, neg_img, warp_matrix, Size( neg_img.cols, neg_img.rows ) );
 	dstMat = dstMat - cpy_img;
 	
-	cvtColor(neg_img, neg_img, CV_BGRA2BGR);
+	cvtColor(neg_img, neg_img, COLOR_BGRA2BGR);
 	cpy_img = cpy_img / 255;
 	neg_img = neg_img.mul( cpy_img );
 	dstMat = dstMat + neg_img;
