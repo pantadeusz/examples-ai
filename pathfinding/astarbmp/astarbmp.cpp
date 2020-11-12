@@ -16,6 +16,7 @@
 #include <map>
 #include <numeric>
 #include <set>
+#include <queue>
 #include <vector>
 
 using std::function;
@@ -24,6 +25,7 @@ using std::map;
 using std::max_element;
 using std::remove_if;
 using std::reverse;
+using std::priority_queue;
 using std::set;
 using std::string;
 using std::vector;
@@ -74,21 +76,20 @@ Path searchPath(
         accessible_verts ///< returns accessible vertices
 ) {
   set<Node> closedSet;
-  set<Node> openSet;
   map<Node, Node> came_from;
   map<Node, float> g_score;
   map<Node, float> f_score;
+  auto cmp = [&f_score](Node best, Node b) { return f_score[best] < f_score[b]; };
+  std::priority_queue<Node, std::vector<Node>, decltype(cmp)> openSet(cmp);
 
-  openSet.insert(start);
+  openSet.push(start);
   g_score[start] = 0;                  ///< distance from start
   f_score[start] = 0 + h(start, goal); ///< estimate distancd to goal
 
   while (openSet.size() > 0) {
     /// searching openSet element with lowest f_score and saving it to "best"
-    const Node &best = *max_element(
-        openSet.begin(), openSet.end(),
-        [&f_score](Node best, Node b) { return f_score[best] > f_score[b]; });
-    openSet.erase(best); ///< we took the best, so it is no longer in open set
+    const Node best = openSet.top();
+    openSet.pop(); ///< we took the best, so it is no longer in open set
     if (best == goal)
       return reconstructPath<Node, Path>(came_from, goal);
     closedSet.insert(best);
@@ -101,7 +102,7 @@ Path searchPath(
         float t_g_score = g_score[best] + dist(neighbor, best);
         /// we should put neighbor to current openSet - it can be evaluated
         /// later
-        openSet.insert(neighbor);
+        openSet.push(neighbor);
         /// if the neighbor does not exist, we assume that it is with inf value
         if ((g_score.count(neighbor) == 0) || (t_g_score < g_score[neighbor])) {
           came_from[neighbor] = best;
@@ -109,9 +110,9 @@ Path searchPath(
           f_score[neighbor] = g_score[neighbor] + h(neighbor, goal);
         }
       }
-    }
-  }
-  return {}; /// no path found
+    } }
+  return {}; 
+ /// no path found
 }
 
 ////////////////////////// END OF A*  /////////////////////
