@@ -124,8 +124,5 @@ int main()
         }
         calculate_nn(od);
     }
-    //    neuron_c neuron(0.0, 0.0);
-
-    //    return neuron.get_sigma(0);
     return 0;
 }
