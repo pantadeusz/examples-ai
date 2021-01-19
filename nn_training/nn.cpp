@@ -57,7 +57,8 @@ ostream &operator<<(ostream &o, const matrix_t &m) {
   return o;
 }
 
-ostream &operator<<(ostream &output, const vector<matrix_t> &nnetwork_matrices) {
+ostream &operator<<(ostream &output,
+                    const vector<matrix_t> &nnetwork_matrices) {
   vector<vector<double>> towrite;
   for (int i = 1; i < nnetwork_matrices.size(); i++) {
     towrite.push_back({(double)(nnetwork_matrices[i].size())});
@@ -250,7 +251,6 @@ pair<vector<matrix_t>, vector<vector_t>> load_nn_from_csv(istream &input) {
   return {ret_matrix, ret_neurons};
 }
 
-
 void save_nn_to_dot(ostream &output, const vector<matrix_t> &nnetwork_matrices,
                     const vector<vector_t> &activations) {
   vector<vector<double>> towrite;
@@ -398,7 +398,7 @@ void verify_nn(vector<matrix_t> m, vector<vector_t> a,
 
   int result_columns =
       m.back().size(); // automatycznie dobieramy liczbe kolumn z wynikami
-
+  double diff_sum = 0.0;
   for (auto training_set_row : input_table) {
     vector_t inputs = {training_set_row.begin(),
                        training_set_row.end() - result_columns};
@@ -406,28 +406,41 @@ void verify_nn(vector<matrix_t> m, vector<vector_t> a,
                              training_set_row.end()};
     auto a_calculated =
         calculate_result_from_network(inputs, {m, a}, activation_function);
-
+    for (int i = 0; i < a_calculated.back().size(); i++) {
+        diff_sum += abs(a_calculated.back().at(i)-outputs_true.at(i));
+    }
     if (save_graphviz.size()) {
       save_nn_for_input_graphviz_dot(save_graphviz, inputs, outputs_true, m,
                                      a_calculated);
     }
   }
+  cout << "verification: " << diff_sum << endl;
 }
-int main(int argc, char **argv) {
-  list<string> args(argv + 1, argv + argc);
+
+int help_txt(int argc, char **argv) {
   if (argc < 3) {
     cerr << "Usage:" << endl;
     cerr << argv[0] << " "
-         << "[-o output] [-dot dot_filename_prefix'] [-i iterations] network_topology training_or_test_set" << endl;
+         << "[-o output] [-dot dot_filename_prefix'] [-i iterations] "
+            "network_topology training_or_test_set"
+         << endl;
     cerr << "Example:" << endl;
     cerr << argv[0] << " "
          << "-o xxx.csv -dot xxx -i 1000000 nn.csv xor_set.csv" << endl;
     return -1;
   }
+  return 0;
+}
+
+int main(int argc, char **argv) {
+  if (help_txt(argc, argv) != 0) return -1;
+
+  list<string> args(argv + 1, argv + argc);
   string training_set_filename = args.back();
   args.pop_back();
   string input_neural_network_name = args.back();
   args.pop_back();
+
   function<double(double)> activation_function;
   activation_function = fermi;
   // activation_function = unipolar;
@@ -445,12 +458,12 @@ int main(int argc, char **argv) {
     auto iterations_s = std::find(args.begin(), args.end(), string("-i"));
     int iterations = 10000000;
     if (iterations_s != args.end()) {
-        iterations_s++;
-        iterations = stoi(*iterations_s);
+      iterations_s++;
+      iterations = stoi(*iterations_s);
     }
-    vector<matrix_t> best_so_far =
-        training_nn(m, a, activation_function, training_set_filename, iterations);
-    
+    vector<matrix_t> best_so_far = training_nn(
+        m, a, activation_function, training_set_filename, iterations);
+
     otput_nn_fname++;
     if (*otput_nn_fname == "-") {
       cout << best_so_far;
@@ -466,7 +479,8 @@ int main(int argc, char **argv) {
   auto graph_viz_fname = std::find(args.begin(), args.end(), string("-dot"));
   if (graph_viz_fname != args.end()) {
     graph_viz_fname++;
-    verify_nn(m, a, activation_function, training_set_filename,*graph_viz_fname);
+    verify_nn(m, a, activation_function, training_set_filename,
+              *graph_viz_fname);
   } else {
     verify_nn(m, a, activation_function, training_set_filename);
   }
