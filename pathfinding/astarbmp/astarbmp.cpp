@@ -50,7 +50,7 @@ Container reconstructPath(map<Node, Node>& came_from, Node goal)
         reconstructed_path.push_back(current);
     }
     reverse(reconstructed_path.begin(),
-        reconstructed_path.end()); // 9 8 7 6 5 4 3 2 1
+        reconstructed_path.end()); 
     return reconstructed_path;
 }
 
@@ -70,20 +70,17 @@ template <class Node, class Path = std::list<Node>>
 Path searchPath(
     const Node& start, ///< start point
     const Node& goal,  ///< goal point
-    const function<float(const Node&, const Node&)>
-        dist,                                          ///< actual distance between adjacent points
-    const function<float(const Node&, const Node&)> h, ///< heuristic function
+    const function<double(const Node&, const Node&)>
+        dist,                                           ///< actual distance between adjacent points
+    const function<double(const Node&, const Node&)> h, ///< heuristic function
     const function<list<Node>(const Node&)>
         accessible_verts ///< returns accessible vertices
 )
 {
     set<Node> closedSet;
     map<Node, Node> came_from;
-    map<Node, float> g_score;
-    map<Node, float> f_score;
-    //auto cmp = [&f_score](Node best, Node b) { return f_score[best] > f_score[b]; };
-    //std::priority_queue<Node, std::vector<Node>, decltype(cmp)> openSet(cmp);
-    //openSet.push(start);
+    map<Node, double> g_score;
+    map<Node, double> f_score;
     set<Node> openSet;
     openSet.insert(start);
     g_score[start] = 0;                  ///< distance from start
@@ -92,15 +89,12 @@ Path searchPath(
     int t = 0;
     while (openSet.size() > 0) {
         /// searching openSet element with lowest f_score and saving it to "best"
-// priority queue //        const Node best = openSet.top();
-// priority queue //        openSet.pop(); ///< we took the best, so it is no longer in open set
-
-
         const Node best = *std::max_element(openSet.begin(), openSet.end(), [&f_score](Node best, Node b) { return f_score[best] > f_score[b]; });
         openSet.erase(best); ///< we took the best, so it is no longer in open set
 
         if (best == goal)
             return reconstructPath<Node, Path>(came_from, goal);
+
         closedSet.insert(best);
         /// check every possible direction
         for (const Node& neighbor : accessible_verts(best)) {
@@ -108,25 +102,19 @@ Path searchPath(
             if (closedSet.count(neighbor) == 0) {
                 /// calculate temporary t_g_score that is the sum of g_score of current
                 /// node (best) and actual distance between (best-neighbour)
-                float t_g_score = g_score[best] + dist(neighbor, best);
-                /// we should put neighbor to current openSet - it can be evaluated
-                /// later
-                openSet.insert(neighbor);
-// priority queue //                openSet.push(neighbor);
-                
+                double t_g_score = g_score[best] + dist(neighbor, best);
                 /// if the neighbor does not exist, we assume that it is with inf value
                 if ((g_score.count(neighbor) == 0) || (t_g_score < g_score[neighbor])) {
                     came_from[neighbor] = best;
                     g_score[neighbor] = t_g_score;
                     f_score[neighbor] = g_score[neighbor] + h(neighbor, goal);
                 }
+                /// we should put neighbor to current openSet - it can be evaluated later
+                openSet.insert(neighbor);
             }
         }
         t++;
-        if ((t%10000) == 0) {
-          std::cout << "openSet.size() = " << openSet.size()  << std::endl;
-        }
-    } 
+    }
     return {};
     /// no path found
 }
@@ -237,7 +225,7 @@ int main(int argc, char** argv)
             ret.end());
         return ret;
     };
-    auto heuristic_f = [&](const point_t& a, const point_t& b) -> float {
+    auto heuristic_f = [&](const point_t& a, const point_t& b) -> double {
         return ::sqrt((a[0] - b[0]) * (a[0] - b[0]) +
                       (a[1] - b[1]) * (a[1] - b[1]));
     };
