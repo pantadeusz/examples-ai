@@ -10,29 +10,32 @@
 
 using namespace raspigcd;
 
-using p2d = generic_position_t<double, 2>;
+using point2d_t = generic_position_t<double, 2>;
 
-auto field_attr = [](auto p, auto dest) {
+auto calculate_attr = [](auto p, auto dest) {
     return (dest - p).length();
 };
 
-auto field_rep = [](auto p, auto dest) {
-    return 200.0 / (1.0 + std::sqrt((dest - p).length()));
+auto calculate_rep = [](auto p, auto obstacles) {
+    double sum = 0.0;
+    for (auto& dest : obstacles) {
+        if ((dest - p).length() < 20) {
+            sum += 50.0 * (20 - (dest - p).length()) / 20.0;
+        }
+        //sum += 500.0 / (10 + (dest - p).length());
+    }
+    return sum;
 };
 
-auto calculate_field = [](auto p, auto dest, auto repel) {
-    double s = field_attr(p, dest);
-    for (auto e : repel) {
-        s += field_rep(p, e);
-    }
-    return s;
+auto calculate_field = [](auto p, auto dest, auto obstacles) {
+    return calculate_attr(p, dest) + calculate_rep(p, obstacles);
 };
 
 int main(int argc, char** argv)
 {
-    p2d destination = {100, 100};
-    p2d position = {0, 0};
-    std::vector<p2d> moves_available = {
+    point2d_t destination = {0, 0};
+    point2d_t position = {50, 50};
+    std::vector<point2d_t> moves_available = {
         {0, 1},
         {1, 1},
         {1, 0},
@@ -41,27 +44,33 @@ int main(int argc, char** argv)
         {-1, -1},
         {-1, 0},
         {-1, 1}};
-    std::vector<p2d> obstacles = {{50, 51}};
+    std::vector<point2d_t> obstacles = {{20, 25}, {-15, 20}, {-33, -20}};
 
-    if (argc == 1) {
-        for (int i = 0; i < 200; i++) {
-            auto mmove = std::min_element(moves_available.begin(),
-                moves_available.end(), [&](auto a, auto b) {
-                    return (calculate_field(a + position, destination, obstacles) < calculate_field(b + position, destination, obstacles));
-                });
-            position = position + *mmove;
-            std::cout << position[0] << " " << position[1] << " 0" << std::endl;
-        }
-    } else {
-        for (int x = 0; x < 100; x++) {
-            for (int y = 0; y < 100; y++) {
+    if ((argc > 1) && (argv[1][0] == 'f')) {
+        for (double x = -60; x < 60; x+=4) {
+            for (double y = -60; y < 60; y+=4) {
                 position[0] = x;
                 position[1] = y;
-
-                std::cout << position[0] << " " << position[1] << " " << calculate_field(position, destination, obstacles) << std::endl;
+                std::cout << x << " " << y << " " << calculate_field(position, destination, obstacles) << std::endl;
             }
             std::cout << std::endl;
         }
+    } else {
+        double errors = 0;
+        while (((position - destination).length() > 2) && (errors < 2)) {
+
+            auto nposition = position + *std::max_element(moves_available.begin(), moves_available.end(), [=](auto a, auto b) {
+                return calculate_field(position + a, destination, obstacles) > calculate_field(position + b, destination, obstacles);
+            });
+            if (calculate_field(nposition, destination, obstacles) > calculate_field(position, destination, obstacles)) {
+                errors++;
+            } else {
+                errors *= 0.96;
+            }
+            position = nposition;
+            std::cout << position[0] << " " << position[1] << " " << calculate_field(position, destination, obstacles) << std::endl;
+        }
     }
+
     return 0;
 }

@@ -13,7 +13,7 @@
 #include <functional>
 #include <iostream>
 #include <list>
-#include <map>
+#include <unordered_map>
 #include <numeric>
 #include <queue>
 #include <set>
@@ -21,7 +21,7 @@
 
 using std::function;
 using std::list;
-using std::map;
+using std::unordered_map;
 using std::max_element;
 using std::priority_queue;
 using std::remove_if;
@@ -40,7 +40,7 @@ using std::vector;
  * @return Container
  */
 template <class Node, class Container>
-Container reconstructPath(map<Node, Node>& came_from, Node goal)
+Container reconstructPath(unordered_map<Node, Node>& came_from, Node goal)
 {
     Container reconstructed_path;
     Node current = goal;
@@ -78,15 +78,14 @@ Path searchPath(
 )
 {
     set<Node> closedSet;
-    map<Node, Node> came_from;
-    map<Node, double> g_score;
-    map<Node, double> f_score;
+    unordered_map<Node, Node> came_from;
+    unordered_map<Node, double> g_score;
+    unordered_map<Node, double> f_score;
     set<Node> openSet;
     openSet.insert(start);
     g_score[start] = 0;                  ///< distance from start
     f_score[start] = 0 + h(start, goal); ///< estimate distancd to goal
 
-    int t = 0;
     while (openSet.size() > 0) {
         /// searching openSet element with lowest f_score and saving it to "best"
         const Node best = *std::max_element(openSet.begin(), openSet.end(), [&f_score](Node best, Node b) { return f_score[best] > f_score[b]; });
@@ -113,7 +112,6 @@ Path searchPath(
                 openSet.insert(neighbor);
             }
         }
-        t++;
     }
     return {};
     /// no path found

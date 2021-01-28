@@ -2,6 +2,14 @@
  * przykładowa implementacja warstwowej sieci neuronowej. Sieć nie obsługuje
  * rekurencji. Jest klasycznym rodzajem sieci neuronowej.
  * */
+
+/**
+ * Przykład uczenia dla kursu Bitcoina
+ * 
+ * ./a.out -o btcusd_trained.csv -dot btcusd_graphs -i 100000 btcusd_network_structure.csv btcusd_training.csv > progress.txt
+ * 
+ * */
+
 #include "dot_print.hpp"
 
 #include <algorithm>
@@ -81,7 +89,7 @@ ostream& operator<<(ostream& output,
 // oraz a - wektory wartości wzbudzenia poszczególnych neuronów
 // uwaga - a[*] nie zawiera biasu!!
 vector<vector_t> feed_forward(const vector<matrix_t>& m,
-    const vector<vector_t>& a,
+    const vector<vector_t>& a, // bez 1 na pozycji bias
     function<double(double)> f)
 {
     vector<vector_t> result = a;
@@ -350,20 +358,19 @@ vector<matrix_t> training_nn(vector<matrix_t> m, vector<vector_t> a, function<do
                 {training_set_row.end() - result_columns, training_set_row.end()}});
     }
 
-    cout << "all_cost: "
-         << cost_function(evaluation_set, {m, a}, activation_function) << endl;
-
     //    auto best_so_far = m; // copy current best
     double m_cost = cost_function(evaluation_set, {m, a}, activation_function);
+    cout << "all_cost: " << m_cost << endl;
 
-#pragma omp parallel for
+
+    #pragma omp parallel for
     // private(m,a,evaluation_set,activation_function)
     for (int iteration = 0; iteration < iterations; iteration++) {
         auto mn = nn_randomize(m, -10, 10);
         double mn_current_cost =
             cost_function(evaluation_set, {mn, a}, activation_function);
         {
-#pragma omp critical
+            #pragma omp critical
             if (mn_current_cost < m_cost) {
                 cout << "prev_cost " << m_cost << " -> ";
                 m_cost = mn_current_cost;
@@ -376,6 +383,71 @@ vector<matrix_t> training_nn(vector<matrix_t> m, vector<vector_t> a, function<do
 
     return m;
 }
+
+
+//minimalizacja
+auto simulated_annealing = [](auto get_random_sol, auto N, auto goal, auto T, int max_iterations, auto callback) {
+    using namespace std;
+    auto current_solution = get_random_sol();
+    auto global_best = current_solution;
+    uniform_real_distribution<double> uk(0.0, 1.0);
+    for (int iteration = 0; iteration < max_iterations; iteration++)
+    {
+        auto next_sol = N(current_solution);
+        if (goal(current_solution) > goal(next_sol))
+        {
+            current_solution = next_sol;
+        }
+        else
+        {
+            if (uk(rand_gen) < exp(-abs(goal(next_sol) - goal(current_solution)) / T(iteration)))
+            {
+                current_solution = next_sol;
+            }
+        }
+        if (goal(current_solution) < goal(global_best))
+            global_best = current_solution;
+        callback(iteration, current_solution);
+    }
+    return global_best;
+};
+
+
+vector<matrix_t> training_nn_sa(vector<matrix_t> m, vector<vector_t> a, function<double(double)> activation_function, string training_set, int iterations)
+{
+    // zaladujmy plik csv do uczenia naszej sieci
+    std::ifstream input(training_set);
+    auto input_table = csv_strings_to_doubles(csv_to_vectors(input));
+
+    int result_columns =
+        m.back().size(); // automatycznie dobieramy liczbe kolumn z wynikami
+
+    vector<pair<vector_t, vector_t>> evaluation_set;
+    // dane uczace
+    for (auto training_set_row : input_table) {
+        evaluation_set.push_back(
+            {{training_set_row.begin(), training_set_row.end() - result_columns},
+                {training_set_row.end() - result_columns, training_set_row.end()}});
+    }
+    m = nn_randomize(m, -10, 10);
+
+    //    auto best_so_far = m; // copy current best
+    double m_cost = cost_function(evaluation_set, {m, a}, activation_function);
+    cout << "all_cost: " << m_cost << endl;
+
+simulated_annealing(
+  [&](){return nn_randomize(m, -10, 10);}, 
+[&](auto mat){return nn_random_change(mat,0.1);}, 
+[&](auto mat){return cost_function(evaluation_set, {mat, a}, activation_function);}, 
+[&](auto i) {return 200000.0/i;}, iterations,
+[&](auto i, auto sol){
+  cout << i << " -> " <<  cost_function(evaluation_set, {sol, a}, activation_function) << endl;
+});
+    return m;
+}
+
+
+
 
 void save_nn_for_input_graphviz_dot(const string& fname_prefix,
     const vector_t& inputs,
@@ -394,7 +466,7 @@ void save_nn_for_input_graphviz_dot(const string& fname_prefix,
         cout << t << " ";
     cout << "]" << endl;
     string fname = fname_prefix;
-    for (int tsr : a_calculated[0])
+    for (double tsr : a_calculated[0])
         fname = fname + "_" + to_string(tsr);
     fname = fname + ".dot";
     ofstream out_dot(fname);
@@ -479,7 +551,8 @@ int nn_training(list<string> args, function<double(double)> activation_function)
             iterations = stoi(*iterations_s);
         }
         vector<matrix_t> best_so_far = training_nn(
-            m, a, activation_function, training_set_filename, iterations);
+//        vector<matrix_t> best_so_far = training_nn_sa(
+              m, a, activation_function, training_set_filename, iterations);
 
         otput_nn_fname++;
         if (*otput_nn_fname == "-") {
@@ -537,8 +610,8 @@ int main(int argc, char** argv)
     if (help_txt(argc, argv) != 0) return -1;
 
     function<double(double)> activation_function;
-    activation_function = fermi;
-    // activation_function = unipolar;
+    //activation_function = fermi;
+    activation_function = unipolar;
 
 
     list<string> args(argv + 1, argv + argc);

@@ -73,13 +73,7 @@ oraz mamy jedną pustą macierz dla warstwy 0, ponieważ jest to warstwa wejści
 Każda warstwa reprezentowana przez macierz ma tyle wierszy ile jest neuronów w tej warstwie, natomiast tyle kolumn, ile jest wejść + 1, ponieważ uwzględniamy wagę biasu.
 */
 vector_t activate(
-    const vector_t &a, function<double(double)> f = [](double x) {
-        if (x < 0)
-            return -1.0;
-        if (x > 0)
-            return 1.0;
-        return 0.0;
-    })
+    const vector_t &a, function<double(double)> f)
 {
     vector_t result = a;
     for (auto &e : result)
@@ -295,13 +289,19 @@ void save_nn_to_csv(ostream &output, vector<matrix_t> &nnetwork_matrices)
 
 int main()
 {
-    function<double(double)> activation_function = [](double x) {
+    function<double(double)> unipolar = [](double x) {
         if (x > 0)
             return 1.0;
         return 0.0;
     };
+
+    function<double(double)> fermi = [](double x) {
+        return 1.0/(1.0 + exp(-x));
+    };
+    function<double(double)> activation_function = fermi;
+    //function<double(double)> activation_function = unipolar;
     // m - macierze kolejnych wag dla kolejnych warstw
-    auto [m, a] = generate_nn_layes({2, 4, 4, 1}, [](int l, int i, int j) {
+    auto [m, a] = generate_nn_layes({2, 50, 50, 1}, [](int l, int i, int j) {
         uniform_real_distribution<double> d(-1.0, 1.0);
         return d(rand_gen);
     }); //  load_nn_from_csv(cin);
@@ -323,9 +323,9 @@ int main()
     double best_so_far_cost = cost_function(evaluation_set, {m, a}, activation_function);
 
 // #pragma omp parallel
-    for (int iteration = 0; iteration < 100000; iteration++)
+    for (int iteration = 0; iteration < 10000000; iteration++)
     {
-        uniform_real_distribution<double> d(-4.0, 4.0);
+        uniform_real_distribution<double> d(-10.0, 10.0);
         for (auto &current_m : m)
         {
             for (auto &current_row : current_m)
@@ -342,7 +342,7 @@ int main()
         {
             best_so_far_cost = current_cost;
             best_so_far = m;
-            save_nn_to_csv(cout, best_so_far);
+            //save_nn_to_csv(cout, best_so_far);
             cout << "current_cost : " << current_cost << endl;
         }
     }
