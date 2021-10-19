@@ -91,9 +91,10 @@ vector<double> tabu_search(function<double(vector<double>)> f, function<bool(vec
         do {
             tabu_i--;
             for (auto direction : directions) {
-                if (((best_neighbour.size() == 0) ||
-                        (f(*tabu_i + direction) < f(best_neighbour))) &&
-                    (!in_tabu(*tabu_i + direction))) {
+                if (f_domain(*tabu_i + direction) &&
+                    (((best_neighbour.size() == 0) ||
+                         (f(*tabu_i + direction) < f(best_neighbour))) &&
+                        (!in_tabu(*tabu_i + direction)))) {
                     best_neighbour = *tabu_i + direction;
                 }
             }
