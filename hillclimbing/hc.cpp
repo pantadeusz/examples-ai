@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <functional>
 #include <iomanip>
 #include <iostream>
@@ -7,8 +8,8 @@
 
 using namespace std;
 
-random_device rd;  //Will be used to obtain a seed for the random number engine
-mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
+random_device rd;           // Will be used to obtain a seed for the random number engine
+mt19937 mt_generator(rd()); // Standard mersenne_twister_engine seeded with rd()
 
 /*
 x = losowy_punkt_dziedziny_f.
@@ -39,7 +40,7 @@ vector<double> hill_climbing(function<double(vector<double>)> f, function<bool(v
     for (int i = 0; i < iterations; i++) {
         auto p2 = p;
 
-        p[distrib(gen)] += distrib_r(gen);
+        p[distrib(mt_generator)] += distrib_r(mt_generator);
         double y2 = f(p2);
         if (y2 < f(p)) {
             p = p2;
@@ -57,6 +58,7 @@ vector<double> operator+(vector<double> a, vector<double> b)
 
 vector<double> tabu_search(function<double(vector<double>)> f, function<bool(vector<double>)> f_domain, vector<double> p0, int iterations)
 {
+    // option: tabu size: // const int tabu_size = 5000;
     const double mod_range = 0.01;
 
     auto offset_f = [=](int i, double dir) {
@@ -71,6 +73,7 @@ vector<double> tabu_search(function<double(vector<double>)> f, function<bool(vec
     }
 
     vector<vector<double>> tabu_list = {p0};
+    // check if the element is in tabu
     auto in_tabu = [&tabu_list](vector<double> p) {
         for (auto& e : tabu_list) {
             int checks = 0;
@@ -82,24 +85,29 @@ vector<double> tabu_search(function<double(vector<double>)> f, function<bool(vec
     };
 
     for (int i = 0; i < iterations; i++) {
-        int tabu_i = tabu_list.size() - 1;
         vector<double> best_neighbour;
 
-        while (tabu_i >= 0) {
+        auto tabu_i = tabu_list.end(); //.size() - 1;
+        do {
+            tabu_i--;
             for (auto direction : directions) {
                 if (((best_neighbour.size() == 0) ||
-                        (f(tabu_list[tabu_i] + direction) < f(best_neighbour))) &&
-                    (!in_tabu(tabu_list[tabu_i] + direction))) {
-                    best_neighbour = tabu_list[tabu_i] + direction;
+                        (f(*tabu_i + direction) < f(best_neighbour))) &&
+                    (!in_tabu(*tabu_i + direction))) {
+                    best_neighbour = *tabu_i + direction;
                 }
             }
             if (best_neighbour.size() != 0) break;
-            tabu_i--;
-        }
+
+        } while (tabu_i != tabu_list.begin());
         tabu_list.push_back(best_neighbour);
+        /* option - limit Tabu size: */ //  if (tabu_list.size() > tabu_size) tabu_list.pop_front();
         cout << (tabu_list.back()) << " " << f(tabu_list.back()) << endl;
     }
-    return tabu_list.back();
+
+    return *std::min_element(tabu_list.begin(), tabu_list.end(), [f](auto a, auto b) {
+        return f(a) < f(b);
+    });
 }
 
 int main()
@@ -119,16 +127,16 @@ int main()
 
     uniform_real_distribution<> distrib_r(-5, 5);
     vector<double> ackley_p0 = {
-        distrib_r(gen),
-        distrib_r(gen),
+        distrib_r(mt_generator),
+        distrib_r(mt_generator),
     };
 
 
     //    auto result = hill_climbing(ackley, ackley_domain, ackley_p0, 10);
     //    cout << result << " -> " << ackley(result) << endl;
 
-    auto result = tabu_search(ackley, ackley_domain, ackley_p0, 100000);
-    //cout << result << " -> " << ackley(result) << endl;
+    auto result = tabu_search(ackley, ackley_domain, ackley_p0, 10000);
+    cout << result << " -> " << ackley(result) << endl;
 
     return 0;
 }
