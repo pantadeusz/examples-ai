@@ -30,7 +30,8 @@ ostream& operator<<(ostream& o, vector<double> v)
     return o;
 }
 
-vector<double> hill_climbing(function<double(vector<double>)> f, function<bool(vector<double>)> f_domain, vector<double> p0, int iterations)
+vector<double> hill_climbing(function<double(vector<double>)> f,
+ function<bool(vector<double>)> f_domain, vector<double> p0, int iterations)
 {
     auto p = p0;
     uniform_int_distribution<> distrib(0, p.size() - 1);
@@ -40,7 +41,8 @@ vector<double> hill_climbing(function<double(vector<double>)> f, function<bool(v
     for (int i = 0; i < iterations; i++) {
         auto p2 = p;
 
-        p[distrib(mt_generator)] += distrib_r(mt_generator);
+        p2[distrib(mt_generator)] += distrib_r(mt_generator);
+         /// Remember about domain!!
         double y2 = f(p2);
         if (y2 < f(p)) {
             p = p2;
@@ -56,11 +58,10 @@ vector<double> operator+(vector<double> a, vector<double> b)
     return a;
 }
 
-vector<double> tabu_search(function<double(vector<double>)> f, function<bool(vector<double>)> f_domain, vector<double> p0, int iterations)
-{
-    // option: tabu size: // const int tabu_size = 5000;
-    const double mod_range = 0.01;
-
+/**
+ * generates all vectors that leads to the points that are mod_range away from the [0,0,...,0] along axis
+ * */
+auto generate_all_directions = [](auto p0, auto mod_range) {
     auto offset_f = [=](int i, double dir) {
         vector<double> v(p0.size());
         v[i] = dir;
@@ -71,6 +72,14 @@ vector<double> tabu_search(function<double(vector<double>)> f, function<bool(vec
         directions.push_back(offset_f(i, mod_range));
         directions.push_back(offset_f(i, -mod_range));
     }
+    return directions;
+};
+
+vector<double> tabu_search(function<double(vector<double>)> f, function<bool(vector<double>)> f_domain, vector<double> p0, int iterations)
+{
+    // option: tabu size: // const int tabu_size = 5000;
+
+    static const vector<vector<double>> directions = generate_all_directions(p0, 0.01);
 
     vector<vector<double>> tabu_list = {p0};
     // check if the element is in tabu
@@ -84,6 +93,7 @@ vector<double> tabu_search(function<double(vector<double>)> f, function<bool(vec
         return false;
     };
 
+    auto best_global_solution = tabu_list.back();
     for (int i = 0; i < iterations; i++) {
         vector<double> best_neighbour;
 
