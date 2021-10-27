@@ -33,22 +33,21 @@ ostream& operator<<(ostream& o, vector<double> v)
 vector<double> hill_climbing(function<double(vector<double>)> f,
  function<bool(vector<double>)> f_domain, vector<double> p0, int iterations)
 {
-    auto p = p0;
+    auto current_work_point = p0;
     uniform_int_distribution<> distrib(0, p.size() - 1);
     uniform_real_distribution<> distrib_r(-0.1, 0.1);
 
-    if (!f_domain(p)) throw std::invalid_argument("The p0 point must be in domain");
+    if (!f_domain(current_work_point)) throw std::invalid_argument("The p0 point must be in domain");
     for (int i = 0; i < iterations; i++) {
-        auto p2 = p;
+        auto new_work_point = current_work_point;
 
-        p2[distrib(mt_generator)] += distrib_r(mt_generator);
+        new_work_point[distrib(mt_generator)] += distrib_r(mt_generator);
          /// Remember about domain!!
-        double y2 = f(p2);
-        if (y2 < f(p)) {
-            p = p2;
+        if (f(new_work_point) < f(current_work_point)) {
+            current_work_point = new_work_point;
         }
     }
-    return p;
+    return current_work_point;
 }
 vector<double> operator+(vector<double> a, vector<double> b)
 {
