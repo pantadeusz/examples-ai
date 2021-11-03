@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <functional>
@@ -49,7 +50,29 @@ genotype_t empty_mutation_f(genotype_t a, double)
     return a;
 }
 
+std::pair<genotype_t, genotype_t> one_point_crossover_f(genotype_t a, genotype_t b)
+{
+    std::uniform_int_distribution<int> cross_p_dist(0, a.size() - 1);
+    int cross_p = cross_p_dist(random_engine);
+    genotype_t a2 = a, b2 = b;
+    for (int i = cross_p; i < a.size(); i++) {
+        std::swap(a2[i], b2[i]);
+    }
+    return {a2, b2};
+}
 
+genotype_t uniform_mutation_f(genotype_t a, double p_m)
+{
+    auto result = a;
+    for (auto& e : result)
+        if (double_random_dist(random_engine) < p_m) e = 1 - e;
+    return result;
+}
+
+
+/**
+ * genetic algorithm implementation
+ * */
 population_t genetic_algorithm(
     std::function<double(genotype_t)> fitnes_f,
     const population_t init_population,
@@ -67,7 +90,26 @@ population_t genetic_algorithm(
     population_fitness_t population_fit;
     for (auto& gene : population)
         population_fit.push_back(fitnes_f(gene));
+
+    auto get_elite = [&]() {
+        int best_i = 0;
+        for (int i = 0; i < population.size(); i++) {
+            if (population_fit[i] > population_fit[best_i]) best_i = i;
+        }
+        return population[best_i];
+    };
+    auto replace_elite = [&](genotype_t e) {
+        int worse_i = 0;
+        for (int i = 0; i < population.size(); i++) {
+            if (population_fit[i]< population_fit[worse_i]) worse_i = i;
+        }
+        population[worse_i] = e;
+        population_fit[worse_i] = fitnes_f(e);
+    };
+
+
     while (termination_cond(population, population_fit, iteration)) {
+        genotype_t elite = get_elite();
         std::vector<int> parent_pop_i = select_f(population_fit);
 
         population_t offspring_pop(parent_pop_i.size());
@@ -92,6 +134,8 @@ population_t genetic_algorithm(
 
         for (int i = 0; i < population.size(); i++)
             population_fit[i] = fitnes_f(population[i]);
+
+        replace_elite(elite);
         iteration++;
     }
 
@@ -123,9 +167,12 @@ int main()
         return i < 100;
     };
 
+    auto crossover_f = one_point_crossover_f;
+    auto mutation_f = uniform_mutation_f;
     auto result = genetic_algorithm(
         one_max,
         init_pop,
-        0.8, 0.001, empty_crossover_f, empty_mutation_f, selection_roulette,debug_term_cond);
+        0.8, 0.001, crossover_f,
+        mutation_f, selection_roulette, debug_term_cond);
     return 0;
 }
