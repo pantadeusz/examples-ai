@@ -1,5 +1,5 @@
-#include <cv.hpp>
-#include <highgui.h>
+#include <opencv2/opencv.hpp>
+#include <opencv2/highgui.hpp>
 #include <iostream>
 
 using namespace cv;
@@ -8,7 +8,6 @@ int main() {
 	int loRange[3] = {0,0,103};
 	int hiRange[3] = {175,33,197};
 	
-	namedWindow("jakostam", CV_WINDOW_AUTOSIZE);
 	createTrackbar("loRange0", "jakostam",&(loRange[0]), 255);
 	createTrackbar("loRange1", "jakostam",&(loRange[1]), 255);
 	createTrackbar("loRange2", "jakostam",&(loRange[2]), 255);
@@ -17,7 +16,7 @@ int main() {
 	createTrackbar("hiRange2", "jakostam",&(hiRange[2]), 255);
 	VideoCapture camera(0);
 	//VideoCapture backgroundvid("Multiwave.wmv");
-	Mat background = imread("plaza.jpg", CV_LOAD_IMAGE_COLOR);
+	Mat background = imread("plaza.jpg");
 	while ( waitKey(1) != 27  ) {
 		Mat frame;
 		Mat backgroundScaled;
@@ -29,7 +28,7 @@ int main() {
 		camera >> frame;
 		flip(frame, frame, 1);
 		resize(background, backgroundScaled,{frame.cols, frame.rows});
-		cvtColor(frame, frameMask, CV_RGB2HSV);
+		cvtColor(frame, frameMask, COLOR_RGB2HSV);
 		inRange(frameMask, Scalar(loRange[0],loRange[1],loRange[2]),
 						Scalar(hiRange[0],hiRange[1],hiRange[2]), frameNegMask);
 		int dilation_size = 5;
