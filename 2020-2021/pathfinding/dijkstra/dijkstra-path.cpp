@@ -126,6 +126,12 @@ int main()
         for (auto e : path.second) {
             std::cout << "{" << e.first << " : " << e.second << " } " << std::endl;
         }
+        int current=3;
+        while (current != -1) {
+            std::cout << current << " ";
+            current = path.second.at(current);
+        }
+        std::cout << std::endl;
     }
 
 
