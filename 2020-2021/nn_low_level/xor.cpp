@@ -1,9 +1,9 @@
+#include <algorithm>
 #include <functional>
 #include <iostream>
 #include <memory>
 #include <random>
 #include <vector>
-#include <algorithm>
 
 using namespace std;
 random_device r_device;
@@ -18,11 +18,11 @@ vector_t operator*(const matrix_t& m, const vector_t& v)
 {
     vector_t result(m.size());
     for (int i = 0; i < m.size(); i++) { // przechodzimy po wierszach
-        double s = 0;
+        result[i] = 0;
+        auto m_row = m.at(i);
         for (int j = 0; j < v.size(); j++) { // przechodzimy po kolumnach i elementach wektora
-            s += m.at(i).at(j) * v.at(j);
+            result[i] += m_row.at(j) * v.at(j);
         }
-        result[i] = s;
     }
     return result;
 }
@@ -57,15 +57,21 @@ ostream& operator<<(ostream& o, const vector_t& row)
     return o;
 }
 
+function<double(double)> bipolar_f = [](double x) {
+    if (x < 0) return -1.0;
+    if (x > 0) return 1.0;
+    return 0.0;
+};
+
+function<double(double)> unipolar_f = [](double x) {
+    if (x > 0) return 1.0;
+    return 0.0;
+};
+
 // aktywacja dla kazdego elementu wektora
-vector_t activate(
-    vector_t a,
-    function<double(double)> f = [](double x) {
-        if (x < 0) return -1.0;
-        if (x > 0) return 1.0;
-        return 0.0;
-    })
+vector_t activate(const vector_t &a_, function<double(double)> f = bipolar_f)
 {
+    auto a = a_; // przepisujemy
     std::transform(a.begin(), a.end(), a.begin(), f);
     return a;
 }
@@ -73,10 +79,7 @@ vector_t activate(
 vector<vector_t> feed_forward(
     const vector<matrix_t>& m, // macierz wag
     const vector<vector_t>& a, // wejscia
-    function<double(double)> f = [](double x) {
-        if (x > 0) return 1.0;
-        return 0.0;
-    })
+    function<double(double)> f = unipolar_f)
 {
     vector<vector_t> result = a;
     for (int i = 1; i < a.size(); i++) {
