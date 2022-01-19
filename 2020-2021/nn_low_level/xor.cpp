@@ -98,16 +98,17 @@ int main(int argc, char** argv)
         return -1;
     }
     // wagi dla warstw
-    vector<matrix_t> m = {{},
+    vector<matrix_t> m = {
+        // warstwa wejsciowa nie ma wag. W praktyce mozna pominac
+        {},
         // wagi dla pierwszej warstwy ukrytej, ostatnia kolumna to bias
         {
             {1, 1, -0.5},
             {-1, -1, 1.5}},
-        // wagi dla warstwy wyjsciowej, ostatnia to bias
-        {
-            {1, 1, -1.5}}};
+        // wagi dla warstwy wyjsciowej, ostatnia waga to bias
+        {{1, 1, -1.5}}};
     vector<vector_t> a = {
-        {stof(argv[1]), stof(argv[2])}, // wejscia
+        {stof(argv[1]), stof(argv[2])}, // wejscia - nie dopisuje 1 na ostatnim neuronie - jest to bias
         {0, 0},                         // warstwa ukryta
         {0}                             // wyjscie
     };
@@ -116,7 +117,7 @@ int main(int argc, char** argv)
     for (auto a_ : a)
         cout << "aktywacja: " << a_;
     cout << "------------------\n";
-    a = feed_forward(m, a); //, [](auto x){return x;});
+    a = feed_forward(m, a, unipolar_f); 
     for (auto m_ : m)
         cout << m_;
     for (auto a_ : a)
