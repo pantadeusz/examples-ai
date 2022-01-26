@@ -38,14 +38,18 @@ vector_t operator+(const vector_t& a, const vector_t& b)
 
 ostream& operator<<(ostream& o, const matrix_t& m)
 {
+    int row_i = 0;
+    o << "{ ";
     for (auto row : m) {
-        o << "| ";
+        o << (((row_i++) == 0) ? "" : ",");
+        o << "{ ";
+        int i = 0;
         for (auto e : row) {
-            o << e << " ";
+            o << (((i++) == 0) ? " " : ", ") << e;
         }
-        o << "|\n";
+        o << "}";
     }
-    o << endl;
+    o << " }"; // << endl;
     return o;
 }
 ostream& operator<<(ostream& o, const vector_t& row)
@@ -71,8 +75,7 @@ function<double(double)> unipolar_f = [](double x) {
 
 function<double(double)> fermi_f = [](double x) {
     const double g = 0.9999;
-    return 1.0/(1+exp(-g*x));
-    
+    return 1.0 / (1 + exp(-g * x));
 };
 
 
@@ -98,7 +101,104 @@ vector<vector_t> feed_forward(
     return result;
 }
 
+vector<vector_t> generate_activations(vector<matrix_t> nn)
+{
+    vector<vector_t> activations;
+    for (auto layer : nn) {
+        activations.push_back(vector_t(layer.size()));
+    }
+    return activations;
+}
 
+vector<vector_t> generate_activations_with_input(vector<matrix_t> nn, vector_t input)
+{
+    vector<vector_t> activations = generate_activations(nn);
+    if (activations.at(0).size() != input.size()) throw invalid_argument("wrong size of input " + to_string(nn.at(0).size()) + " " + to_string(input.size()));
+    activations.at(0) = input;
+    return activations;
+}
+
+double loss_function(vector<vector_t> training_set, vector<matrix_t> nn, function<double(double)> f = unipolar_f)
+{
+    double loss = 0.0;
+    vector<vector_t> activations = generate_activations(nn);
+
+    for (auto training_row : training_set) {
+        vector_t inputs = {training_row.begin(), training_row.end() - 1};
+        double expected_output = training_row.back();
+        activations[0] = inputs;
+        auto result_activations = feed_forward(nn, activations, f);
+        loss += abs(result_activations.back().at(0) - expected_output);
+    }
+    return loss;
+}
+
+
+random_device rd;
+mt19937 randgen(rd());
+
+vector<matrix_t> generate_nn(vector<int> layer_sizes)
+{
+    vector<matrix_t> m(layer_sizes.size());
+    for (int layer_i = 0; layer_i < layer_sizes.size(); layer_i++) {
+        if (layer_i == 0) {
+            m[layer_i].resize(layer_sizes[layer_i]);
+        } else {
+            m[layer_i] = matrix_t(layer_sizes[layer_i], vector_t(layer_sizes[layer_i - 1] + 1));
+        }
+    }
+    return m;
+}
+
+vector<matrix_t> set_nn_random_weights(vector<matrix_t> m)
+{
+    for (auto& layer : m) {
+        for (auto& neruon : layer) {
+            for (auto& w : neruon) {
+                uniform_real_distribution<double> distr(-2.0, 2.0);
+                w = distr(randgen);
+            }
+        }
+    }
+    return m;
+}
+
+vector<matrix_t> generate_random_nn(vector<int> layer_sizes)
+{
+    vector<matrix_t> m = generate_nn(layer_sizes);
+    return set_nn_random_weights(m);
+}
+vector<matrix_t> teach_nn(vector<vector_t> training_set, vector<matrix_t> m, function<double(double)> activation_f)
+{
+    auto best_so_far = m;
+    for (int i = 0; i < 10000000; i++) {
+        m = set_nn_random_weights(m);
+        auto prev_cost = loss_function(training_set, best_so_far, activation_f);
+        auto current_cost = loss_function(training_set, m, activation_f);
+        if (current_cost < prev_cost) {
+            cout << i << " " << prev_cost << " " << current_cost << endl;
+            best_so_far = m;
+            if (current_cost == 0) {
+                cout << "FOUND AT ITERATION " << i << endl;
+                break;
+            }
+        }
+        // cout << "cost = " << result << endl;
+    }
+    return best_so_far;
+}
+
+
+vector<vector_t> training_set = {
+    {0, 0, 0},
+    {1, 0, 0},
+    {1, 1, 1},
+    {0, 1, 0}};
+// vector<vector_t> training_set = {
+//     {0, 0, 0},
+//     {1, 0, 1},
+//     {1, 1, 0},
+//     {0, 1, 1}};
 
 int main(int argc, char** argv)
 {
@@ -106,27 +206,28 @@ int main(int argc, char** argv)
         cerr << "Podaj 2 argumenty do funkcji xor" << endl;
         return -1;
     }
-    // wagi dla warstw
-    vector<matrix_t> m = {
-        // warstwa wejsciowa nie ma wag. W praktyce mozna pominac
-        {{}, {}},
-        // wagi dla pierwszej warstwy ukrytej, ostatnia kolumna to bias
-        {
-            {1, 1, -0.5},
-            {-1, -1, 1.5}},
-        // wagi dla warstwy wyjsciowej, ostatnia waga to bias
-        {{1, 1, -1.5}}};
-     vector<vector_t> a = {
-         {stof(argv[1]), stof(argv[2])}, // wejscia - nie dopisuje 1 na ostatnim neuronie - jest to bias
-         {0, 0},                         // warstwa ukryta
-         {0}                             // wyjscie
-     };
-    for (auto m_ : m)
-        cout << m_ << endl;
+
+    vector<matrix_t> m = generate_random_nn({2, 2, 1});
+
+    auto activation_f = unipolar_f;
+
+    m = teach_nn(training_set, m, activation_f);
+//m ={
+//{ { },{ } },
+//{ {  -1.66308, -1.20361, 1.6106},{  -1.52649, -1.77215, 1.70358} },
+//{ {  -1.81891, -1.62669, -0.384691} }};
+    auto a = generate_activations_with_input(m, {stof(argv[1]), stof(argv[2])});
+
+    int layer_i = 0;
+    cout << "{\n";
+    for (auto m_ : m) {
+        cout << ((layer_i++) ? ",\n" : "") << m_;
+    }
+    cout << "}" << endl;
     for (auto a_ : a)
         cout << "aktywacja: " << a_;
     cout << "------------------\n";
-    a = feed_forward(m, a, unipolar_f);
+    a = feed_forward(m, a, activation_f);
     for (auto m_ : m)
         cout << m_;
     for (auto a_ : a)
