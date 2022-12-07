@@ -137,7 +137,6 @@ void imageOverImageBGRA(const Mat& srcMat, Mat& dstMat, const vector<Point2f>& d
     dstMat = dstMat + neg_img;
 }
 
-
 std::vector<vector<Point2f>> detectFacesLocations(Mat frame_orig)
 {
     Mat frame;
