@@ -13,12 +13,12 @@ using namespace cv;
 
 void drawPictureOnPict(const Mat srcMat, const Mat imgToPut, Mat &resultMat, const vector<Point> contour)
 {
-	Mat dstMat(Size(srcMat.cols, srcMat.rows), CV_8UC3);
-	Mat cutter(Size(imgToPut.cols, imgToPut.rows), imgToPut.type());
+	Mat dstMat(srcMat.rows, srcMat.cols, CV_8UC3);
+	Mat cutter(imgToPut.rows, imgToPut.cols, imgToPut.type());
 
 	cutter = Scalar(0);
 	bitwise_not(cutter, cutter);
-	vector<Point2f> src = {{0, 0}, {dstMat.cols, 0}, {dstMat.cols, dstMat.rows}, {0, dstMat.rows}};
+	vector<Point2f> src = {{0, 0}, {imgToPut.cols, 0}, {imgToPut.cols, imgToPut.rows}, {0, imgToPut.rows}};
 	vector<Point2f> dst;
 	for (auto p : contour)
 		dst.push_back(Point2f(p.x, p.y));
@@ -45,6 +45,7 @@ int main(int argc, char** argv)
 	if (argc < 2) throw std::invalid_argument("Podaj argumenty");
 	Mat picture = imread(argv[1]);
 
+    imshow("toput",picture);
     vector<VideoCapture> cameras;
     for (auto e : vector<string>(argv + 2, argv + argc)) {
         cout << "camera number " << e << endl;
@@ -64,16 +65,20 @@ int main(int argc, char** argv)
             Mat diledges;
 
             cvtColor(original_image, m, COLOR_BGR2GRAY);
-            threshold(m, m, C, 255, THRESH_BINARY);
+            //threshold(m, m, C, 255, THRESH_BINARY);
             // adaptiveThreshold(m, m, 128, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 5, C / 10.0);
             morphologyEx(m, m, MORPH_OPEN, k);
             morphologyEx(m, m, MORPH_CLOSE, k);
+            Canny(m,m,100,200);
             imshow("capture " + to_string(i++), m);
             vector<vector<Point>> contours;
             findContours(m, contours, RETR_LIST, CHAIN_APPROX_SIMPLE);
+            Mat imgContours = original_image.clone();
+            drawContours(imgContours,contours, -1,{255,0,255},1);
+            imshow("found contours", imgContours);
             for (int i = 0; i < contours.size(); i++) {
                 approxPolyDP(contours[i], contours[i], epsilon, true);
-                if (contours[i].size() == 4) {
+                if ((contours[i].size() == 4) && (contourArea(contours[i], true) > 100)) {
                     int area = contourArea(contours[i], true);
                     if (area > 0)
                         drawContours(original_image, contours, i, {0, 255, 0}, 1);

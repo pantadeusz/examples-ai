@@ -10,34 +10,41 @@ using namespace cv;
 
 int main(int argc, char **argv)
 {
-	int trackval = 0;
+	std::vector<int> lower = {50,33,87};
+	std::vector<int> upper = {94,255,255};
 	VideoCapture cap1(0);
 	if (!cap1.isOpened())
 		return -1;
 
 	namedWindow("pierwsze", WINDOW_AUTOSIZE);
-	createTrackbar("parametr", "pierwsze", &trackval, 100);
+	namedWindow("detected", WINDOW_AUTOSIZE);
+	createTrackbar("lh", "detected", &lower[0], 255);
+	createTrackbar("ls", "detected", &lower[1], 255);
+	createTrackbar("lv", "detected", &lower[2], 255);
+	createTrackbar("hh", "detected", &upper[0], 255);
+	createTrackbar("hs", "detected", &upper[1], 255);
+	createTrackbar("hv", "detected", &upper[2], 255);
 	while (true)
 	{
-		Mat f1;
-		//cap1 >> f1;
+		Mat f1, dst, detected,dilated;
 		cap1.read(f1);
-		Mat dst;
-		Mat kernel(3, 3, CV_32F);
-		kernel.at<float>(0,0) = 0;
-		kernel.at<float>(1,0) = -1;
-		kernel.at<float>(2,0) = 0;
-		kernel.at<float>(0,1) = -1;
-		kernel.at<float>(1,1) = 5;
-		kernel.at<float>(2,1) = -1;
-		kernel.at<float>(0,2) = 0;
-		kernel.at<float>(1,2) = -1;
-		kernel.at<float>(2,2) = 0;
-		
-		filter2D(f1, dst, -1, kernel);
+		cvtColor(f1, dst, COLOR_BGR2HSV);
 		
 		imshow("pierwsze", f1);
 		imshow("wynik", dst);
+		inRange(dst, lower,upper, detected);
+		imshow("detected", detected);
+		auto kernel = getStructuringElement(MORPH_ELLIPSE,Size{5,5});
+		erode(detected, dilated, kernel);
+		dilate(dilated, dilated, kernel);
+		imshow("dilated", dilated);
+		vector<vector<Size>> contours;
+		vector<Vec4i> hierarchy;
+		findContours (dilated, contours, hierarchy, RETR_LIST, CHAIN_APPROX_SIMPLE);
+		cout << contours.size() << endl;
+		auto selected = *std::max_element(contours.begin(), contours.end(), [](auto a, auto b){
+			return contourArea(a) < contourArea(b);});
+		cout << " " << selected[0] << endl; 
 		if (waitKey(1) == 27)
 			break;
 	}
