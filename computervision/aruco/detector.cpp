@@ -56,7 +56,6 @@ int main()
             cout << foundIdx << endl;
             auto found = markerCorners.at(foundIdx);
             std::cout << found << std::endl;
-            // drawContours(detected, markerCorners, -1, {0, 0, 255}, 2);
             auto p = found[0];
             auto r = fromPixelsToMm(found)[0];
             string txt = "[" + to_string(p.x) + "," + to_string(p.y) + "] [" + to_string(r.x) + "," + to_string(r.y) + "]";
