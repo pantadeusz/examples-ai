@@ -27,7 +27,7 @@ Mat glasses;
 std::vector<vector<Point2f>> detectFacesLocations(Mat frame);
 void imageOverImageBGRA(const Mat& srcMat, Mat& dstMat, const vector<Point2f>& dstFrameCoordinates);
 
-double rectDiastance(vector<Point2f> a, vector<Point2f> b)
+double rectDistance(vector<Point2f> a, vector<Point2f> b)
 {
     double sum = 0;
     for (int i = 0; i < a.size(); i++) {
@@ -45,6 +45,11 @@ int main(void)
     VideoCapture capture;
     Mat frame;
 
+    //for (auto e : frame_integral) {
+    //    std::cout << e << std::endl;
+    //}
+    //imshow("integral1", frame_integral);
+
     //-- 1. Load the cascade
     if (!face_cascade.load("lbpcascade_frontalface.xml")) {
         return -9;
@@ -54,56 +59,58 @@ int main(void)
     };
     glasses = imread("dwi.png", -1);
     // 	std::cout << "C:" << glasses.channels() << "\n";
-    capture.open(-1);
+    capture.open(0);
     if (!capture.isOpened()) {
         return -7;
     }
 
-    list<vector<Point2f>> detection_history;
-    int iteration = 0;
-    vector<Point2f> avg = {{0, 0}, {0, 0}, {0, 0}, {0, 0}};
+    std::list<vector<Point2f>> detection_history;
     while (capture.read(frame)) {
         if (frame.empty()) return -1;
-        if ((iteration % 2) == 0) {
-            auto detected_faces = detectFacesLocations(frame);
+        auto detected_faces = detectFacesLocations(frame);
 
-            avg = {{0, 0}, {0, 0}, {0, 0}, {0, 0}};
-            if (detection_history.size() > 0) {
-                for (auto e : detection_history) {
-                    for (int i = 0; i < 4; i++)
-                        avg[i] = avg[i] + e[i];
-                }
-                for (int i = 0; i < 4; i++) {
-                    avg[i].x = avg[i].x / detection_history.size();
-                    avg[i].y = avg[i].y / detection_history.size();
-                }
-            }
 
-            if (detected_faces.size() > 0) {
-                if (detection_history.size() > 0) {
-                    sort(detected_faces.begin(), detected_faces.end(), [&](auto a, auto b) {
-                        return rectDiastance(a, detection_history.back()) < rectDiastance(b, detection_history.back());
-                    });
-
-					for (auto a : detected_faces) {
-						std::cout << rectDiastance(a, detection_history.back()) << " ";
-					}
-					std::cout << std::endl;
-                }
-                detection_history.push_back(detected_faces.at(0));
-            } else if (detection_history.size()) {
-                detection_history.pop_front();
-            }
-            if (detection_history.size() > 5) {
-                detection_history.pop_front();
-            }
+        if (detected_faces.size() > 0) {
+            sort(detected_faces.begin(), detected_faces.end(), [&](auto a, auto b) {
+                return contourArea(a) > contourArea(b);
+            });
+            detection_history.push_back(detected_faces.at(0));
+        } else {
+            if (detection_history.size() > 0) detection_history.pop_front();
         }
-        imageOverImageBGRA(glasses.clone(), frame, avg);
+        if (detection_history.size() > 0) {
+            if (detection_history.size() > 4) {
+                vector<Point2f> avg = detection_history.front();
+                auto dh = detection_history;
+                dh.pop_back();
+                dh.pop_front();
+                for (auto det : dh) {
+                    for (int e = 0; e < 4; e++) {
+                        avg[e] += det[e];
+                    }
+                }
+                for (int e = 0; e < 4; e++) {
+                    avg[e].x /= (float)(detection_history.size() - 2);
+                    avg[e].y /= (float)(detection_history.size() - 2);
+                }
+                double difference = 0;
+                for (int e = 0; e < 4; e++) {
+                        difference += std::abs(avg[e].x - detection_history.back()[e].x);
+                        difference += std::abs(avg[e].y - detection_history.back()[e].y);
+                }
+                std::cout << difference << std::endl;
+                if (difference > 1000) detection_history.pop_back(); /// exclude result
+            } 
+            imageOverImageBGRA(glasses.clone(), frame, detection_history.back());
+            
+        }
+        if (detection_history.size() > 5) {
+            detection_history.pop_front();
+        }
         cv::flip(frame, frame, 1);
         imshow("DWI", frame);
 
         if ((waitKey(1) & 0x0ff) == 27) return 0;
-        iteration++;
     }
     return 0;
 }
@@ -118,8 +125,7 @@ void imageOverImageBGRA(const Mat& srcMat, Mat& dstMat, const vector<Point2f>& d
     vector<Mat> rgbaChannels(4);
     Mat srcAlphaMask(srcMat.rows, srcMat.cols, srcMat.type());
     split(srcMat, rgbaChannels);
-    rgbaChannels = {rgbaChannels[3], rgbaChannels[3], rgbaChannels[3]};
-    merge(rgbaChannels, srcAlphaMask);
+    merge(vector<Mat>(3, rgbaChannels.at(3)), srcAlphaMask);
 
     // wspolrzedne punktow z obrazu nakladanego
     vector<Point2f> srcFrameCoordinates = {{0, 0}, {(float)srcMat.cols, 0}, {(float)srcMat.cols, (float)srcMat.rows}, {0, (float)srcMat.rows}};
@@ -151,21 +157,23 @@ std::vector<vector<Point2f>> detectFacesLocations(Mat frame_orig)
     equalizeHist(frame_gray, frame_gray);
 
     // detect face
-    face_cascade.detectMultiScale(frame_gray, faces, 1.1, 2, 0, Size(6, 6));
+    face_cascade.detectMultiScale(frame_gray, faces, 1.1, 2, 0, Size(64, 64));
+
 
     for (size_t i = 0; i < faces.size(); i++) {
-        Mat faceROI = frame_gray(faces[i]); // range of interest
-        // imshow ( "ROI_" + to_string(i), faceROI );
-        std::vector<Rect> eyes;
-        eyes_cascade.detectMultiScale(faceROI, eyes, 1.1, 2, 0 | CASCADE_SCALE_IMAGE, Size(2, 2));
-        if (eyes.size() > 0) {
-            vector<Point2f> dst = {
-                Point2f((faces[i].x) * 2, (faces[i].y + faces[i].height * 5 / 20) * 2),
-                Point2f((faces[i].x + faces[i].width) * 2, (faces[i].y + faces[i].height * 5 / 20) * 2),
-                Point2f((faces[i].x + faces[i].width) * 2, (faces[i].y + faces[i].height * 5 / 20 + faces[i].height * 3 / 10) * 2),
-                Point2f((faces[i].x) * 2, (faces[i].y + faces[i].height * 5 / 20 + faces[i].height * 3 / 10) * 2)};
-            detection_results.push_back(dst);
-        }
+        // range of interest - cut out the face
+        //Mat faceROI = frame_gray(faces[i]);
+        //imshow ( "ROI_" + to_string(i), faceROI );
+        //std::vector<Rect> eyes;
+        //eyes_cascade.detectMultiScale(faceROI, eyes, 1.1, 2, 0 | CASCADE_SCALE_IMAGE, Size(2, 2));
+        //if (eyes.size() > 0) {
+        vector<Point2f> dst = {
+            Point2f((faces[i].x) * 2, (faces[i].y + faces[i].height * 5 / 20) * 2),
+            Point2f((faces[i].x + faces[i].width) * 2, (faces[i].y + faces[i].height * 5 / 20) * 2),
+            Point2f((faces[i].x + faces[i].width) * 2, (faces[i].y + faces[i].height * 5 / 20 + faces[i].height * 3 / 10) * 2),
+            Point2f((faces[i].x) * 2, (faces[i].y + faces[i].height * 5 / 20 + faces[i].height * 3 / 10) * 2)};
+        detection_results.push_back(dst);
+        //}
     }
     return detection_results;
 }
