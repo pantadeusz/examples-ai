@@ -11,12 +11,12 @@
 
 std::pair<cv::Mat, cv::Mat> get_camera_properties_ps3eye()
 {
-    // Camera matrix
+    // coefficients for approximated PS3 Eye camera
+    //! Camera matrix
     cv::Mat camera_matrix = (cv::Mat_<double>(3, 3) << 600, 0, 320,
         0, 600, 240,
         0, 0, 1);
-
-    // Distortion coefficients
+    //! Distortion coefficients
     cv::Mat dist_coeffs = (cv::Mat_<double>(5, 1) << 0, 0, 0, 0, 0);
 
     return {camera_matrix, dist_coeffs};
@@ -38,6 +38,10 @@ int main()
     using namespace cv;
     using namespace std;
 
+    Mat obstacle_img = imread("obstacle.png");
+    Mat car_img = imread("car0.png");
+    double car_pos = 160.0; 
+
 
     list<pair<std::chrono::steady_clock::time_point, vector<Point2f>>> detectedPositions;
 
@@ -45,7 +49,6 @@ int main()
     Ptr<aruco::DetectorParameters> parameters = aruco::DetectorParameters::create();
     Ptr<aruco::Dictionary> dictionary = aruco::getPredefinedDictionary(aruco::DICT_6X6_250);
     namedWindow("markers", WINDOW_NORMAL);
-    namedWindow("markers_rejected", WINDOW_NORMAL);
 
     auto [camera_matrix, dist_coeffs] = get_camera_properties_ps3eye();
     auto obj_points = get_object_points();
@@ -55,6 +58,7 @@ int main()
         Mat inputImage;
         Mat detected;
         cam >> inputImage;
+        //resize(inputImage, inputImage, Size(320, 240), 0, 0, INTER_CUBIC);
         detected = inputImage.clone();
         vector<int> markerIds;
         vector<vector<Point2f>> markerCorners, rejectedCandidates;
@@ -71,13 +75,24 @@ int main()
             solvePnP(obj_points, markerCorners.at(foundIdx), camera_matrix, dist_coeffs, rvecs, tvecs);
             cv::drawFrameAxes(detected, camera_matrix, dist_coeffs, rvecs, tvecs, 10.1);
 
+            Mat rot_mat;
+            Rodrigues(rvecs, rot_mat);
+            double angle_z = atan2(rot_mat.at<double>(1,0), rot_mat.at<double>(0,0));
+            double angle_x = atan2(rot_mat.at<double>(2,1), rot_mat.at<double>(2,2));
+            angle_x = -angle_x+((angle_x < 0)?(-M_PI):M_PI);
+            double angle_y = -asin(rot_mat.at<double>(2,0));
+
+            std::cout << angle_x << " " << angle_y << " " << angle_z << std::endl;
             auto found = markerCorners.at(foundIdx);
-            //std::cout << found << std::endl;
-            auto p = found[0];
-            string txt = "[" + to_string(p.x) + "," + to_string(p.y) + "]";
-            putText(detected, txt.c_str(), p,
-                FONT_HERSHEY_PLAIN, 0.5, {0, 255, 0});
+            double direction_x = angle_z;
+
+            
+            if (std::abs(direction_x) > 0.1) car_pos += 5*direction_x;
+            if (car_pos <= (car_img.cols/2)) car_pos = (car_img.cols/2);
+            if (car_pos >= (320-(car_img.cols/2))) car_pos = (320-(car_img.cols/2))-1;
         }
+        Mat insetImage(detected, Rect(car_pos-(car_img.cols/2), 160, car_img.rows, car_img.cols));
+        car_img.copyTo(insetImage);
         imshow("markers", detected);
     }
 
