@@ -130,7 +130,7 @@ string g2d(const graph_t& G, const vector<double>& labels, const int currentNode
         for (int y = 0; y < h; y++) {
             double v = (labels[y] < INF) ? labels[y] : numeric_limits<double>::infinity();
             if (currentNode == y) {
-                ret << y << "[label=\"#v" << y << "(" << v << ")#\"];\n";
+                ret << y << "[label=\"v" << y << "(" << v << ")<-\"];\n";
             } else {
                 ret << y << "[label=\"v" << y << "(" << v << ")\"];\n";
             }

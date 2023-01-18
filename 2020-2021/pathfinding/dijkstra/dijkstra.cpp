@@ -115,8 +115,8 @@ int main()
     graph_t G = {
         {e, 1, e, e, 1},
         {1, e, 3, 1, e},
-        {e, 3, e, 1, e},
-        {e, 1, 1, e, 1},
+        {e, 3, e, 2, e},
+        {e, 1, 2, e, 1},
         {1, e, e, 1, e}};
     for (const auto row : G) {
         for (const auto e : row) {

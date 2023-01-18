@@ -6,7 +6,6 @@
 
  */
 #include "thirdparty/lodepng.h"
-#include "thirdparty/lodepng.cpp"
 #include <iostream>
 #include <vector>
 #include <unordered_map>

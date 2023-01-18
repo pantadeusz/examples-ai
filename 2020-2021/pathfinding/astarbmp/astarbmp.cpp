@@ -5,7 +5,6 @@
  2016, 2017, 2018, 2019, 2020
  MIT License
  */
-#include "thirdparty/lodepng.cpp"
 #include "thirdparty/lodepng.h"
 #include <algorithm>
 #include <array>
