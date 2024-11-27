@@ -1,3 +1,6 @@
+# Example from https://pytorch.org/tutorials/beginner/basics/quickstart_tutorial.html
+# Enhanced by Tadeusz Puźniakowski 2024
+
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
