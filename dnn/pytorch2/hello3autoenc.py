@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader
 from torchvision import datasets
 from torchvision.transforms import ToTensor
 from torchvision.utils import save_image
+
 # Download training data from open datasets.
 training_data = datasets.FashionMNIST(
     root="data",
@@ -25,7 +26,6 @@ test_data = datasets.FashionMNIST(
 
 batch_size = 1000
 
-print(training_data[0])
 raw_training_data = [ (elem[0],elem[0]) for elem in training_data ]
 raw_test_data = [ (elem[0],elem[0]) for elem in test_data ]
 # Create data loaders.
@@ -55,31 +55,30 @@ class NeuralNetwork(nn.Module):
         self.cnn_stack = nn.Sequential(
             nn.Conv2d(1,32,(3,3)), # 26*26*32
             nn.ReLU(),
-            nn.MaxPool2d(2), #, stride=2), #  13 * 13* 32
+            nn.MaxPool2d(2), # 13 * 13* 32
             nn.Conv2d(32,32,(3,3)), # 11 * 11 * 32
             nn.ReLU(),
         )
         self.flatten = nn.Flatten()
         self.linear_relu_stack = nn.Sequential(
             nn.Linear(11*11*32, 512),
-            #nn.Linear(28*28, 512),
+            #nn.Linear(28*28, 512),# This was in original example
             nn.ReLU(),
             nn.Dropout(0.5),
             nn.Linear(512, 512),
             nn.ReLU(),
             nn.Dropout(0.5),
             nn.Linear(512, 32),
-            nn.Softmax(1)
+            nn.Sigmoid()
         )
         self.decoder_stack = nn.Sequential(
-            nn.Linear(32, 512),
+            nn.Linear(32, 1024),
             nn.ReLU(),
             nn.Dropout(0.5),
-            nn.Linear(512, 1024),
+            nn.Linear(1024, 800),
             nn.ReLU(),
-            nn.Linear(1024, 28*28),
-            #nn.ReLU(),
-            #nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(800, 28*28),
             nn.Unflatten(1,(1,28,28))
         )
 
@@ -131,13 +130,12 @@ def test(dataloader, model, loss_fn):
     print(f"Test Error: Avg loss: {test_loss:>8f} of {size} items\n")
 
 
-epochs = 200
+epochs = 1000
 for t in range(epochs):
     print(f"Epoch {t+1}\n-------------------------------")
     train(train_dataloader, model, loss_fn, optimizer)
     test(test_dataloader, model, loss_fn)
 print("Done!")
-
 
 torch.save(model.state_dict(), "modelautoenc.pth")
 print("Saved PyTorch Model State to modelautoenc.pth")
@@ -146,7 +144,6 @@ model = NeuralNetwork().to(device)
 model.load_state_dict(torch.load("modelautoenc.pth", weights_only=True))
 
 eval_model = model.eval() # end of training
-#test_row = test_data[0]
 
 with torch.no_grad():
     i = 0
@@ -156,10 +153,8 @@ with torch.no_grad():
         x = torch.reshape(x, (1,1,28,28))
         x = x.to(device)
         pred = eval_model(x)
-        #print(pred)
         save_image(pred,f'results/mnist_{i}_y.png')
         save_image(x,f'results/mnist_{i}_x.png')
-        # predicted, actual = classes[pred[0].argmax(0)], classes[y]
-        # print(f'Predicted: "{predicted}", Actual: "{actual}"') #  -> "{pred[0]}"
+
 
 
