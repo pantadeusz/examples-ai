@@ -15,7 +15,6 @@ if st.button("Send") and query:
 						"model": "wizardlm2:latest",  # Replace with the specific model you want to use
 						"prompt": query,
 						"temperature": 0.7,  # Adjust as needed
-						"max_tokens": 200,  # Set token limit
 						"stream": True
 					},
 					stream=True
@@ -27,7 +26,6 @@ if st.button("Send") and query:
 						"model": "wizardlm2:latest",  # Replace with the specific model you want to use
 						"prompt": query,
 						"temperature": 0.7,  # Adjust as needed
-						"max_tokens": 200,  # Set token limit
 						"stream": True,
 						"context": st.session_state["context"]  # Include context
 					},
